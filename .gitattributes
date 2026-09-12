@@ -1,0 +1,7 @@
+# 强制 LF 换行，避免 Windows 检出 CRLF 导致容器内 shell/python 脚本报错
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.py text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.md text eol=lf

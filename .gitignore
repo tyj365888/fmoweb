@@ -1,0 +1,18 @@
+# 敏感信息与运行状态 —— 切勿提交
+.env
+.env.local
+ca/
+avatars/
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# 系统 / 编辑器
+.DS_Store
+.idea/
+.vscode/

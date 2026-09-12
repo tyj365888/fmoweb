@@ -1,0 +1,139 @@
+# FMO 完整部署 compose（SAS + EMQX + FAS + fmoweb 网页软电台）
+# 用法：cp .env.example .env && 填好配置 && docker compose up -d --build
+# 详细步骤见 DEPLOY.md
+
+services:
+  # SAS 鉴权服务（作者 bg5esn）
+  sas:
+    image: ghcr.io/bg5esn/fmo-server-authrozier-service:latest
+    container_name: fmo-sas
+    restart: unless-stopped
+    command:
+      - --server-uid
+      - ${SAS_SERVER_UID:?Set SAS_SERVER_UID in .env}
+      - --server-callsign
+      - ${SAS_SERVER_CALLSIGN:?Set SAS_SERVER_CALLSIGN in .env}
+      - --mqtt-host
+      - ${SAS_MQTT_HOST:?Set SAS_MQTT_HOST in .env}
+      - --mqtt-port
+      - ${SAS_MQTT_PORT:-1883}
+      - --cert-fingerprint
+      - ${SAS_CERT_FINGERPRINT:?Set SAS_CERT_FINGERPRINT in .env}
+      - --http-port
+      - "8080"
+    ports:
+      - "8080:8080"
+    expose:
+      - "8080"
+    volumes:
+      - ./sas-data:/home/app/.sas
+    networks:
+      fmo:
+        ipv4_address: 172.30.0.4
+
+  # EMQX MQTT broker（鉴权走 fmoweb 的指纹采集代理）
+  emqx:
+    image: emqx/emqx:5.8.6
+    container_name: fmo-emqx
+    restart: unless-stopped
+    depends_on:
+      - sas
+    environment:
+      EMQX_AUTHENTICATION__1: >-
+        {mechanism = password_based, backend = http, method = post, url = "http://fmoweb:9530/capture", headers = {"Content-Type" = "application/json"}, body = {username = "$${username}", password = "$${password}"}}
+      EMQX_DASHBOARD__DEFAULT_USERNAME: '"${EMQX_DASHBOARD_USERNAME:-admin}"'
+      EMQX_DASHBOARD__DEFAULT_PASSWORD: '"${EMQX_DASHBOARD_PASSWORD:?Set EMQX_DASHBOARD_PASSWORD in .env}"'
+    ports:
+      - 1883:1883
+      - 8083:8083
+      - 8084:8084
+      - 8883:8883
+      - 18083:18083
+    volumes:
+      - ./emqx-data:/opt/emqx/data
+    networks:
+      fmo:
+        ipv4_address: 172.30.0.3
+
+  # FAS 审计服务（构建时自动获取最新版本）
+  fas:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM debian:bookworm-slim
+        ARG TARGETARCH=amd64
+        RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates tar && rm -rf /var/lib/apt/lists/*
+        RUN FAS_VERSION=$$(curl -fsSL https://bg5esn.com/share/fmo/fas.json | sed -n 's/.*"Version"[^"]*"\([0-9.]*\)".*/\1/p' || echo 2.0.22) \
+            && if [ "$$TARGETARCH" = "arm64" ]; then RID="linux-arm64"; else RID="linux-x64"; fi \
+            && curl -fsSL "https://bg5esn.com/share/fmo/fas/v$$FAS_VERSION/fmo-audit-service-$$RID.tar.gz" -o /tmp/fas.tgz \
+            && mkdir -p /opt/fmo-fas \
+            && tar -xzf /tmp/fas.tgz -C /opt/fmo-fas \
+            && chmod +x /opt/fmo-fas/fmo-audit-service \
+            && rm /tmp/fas.tgz
+        ENV EMQX_MONITOR_DB=/data/fmo-audit-service.db
+        ENV EMQX_MONITOR_PORT=9527
+        EXPOSE 9527
+        VOLUME /data
+        CMD ["/opt/fmo-fas/fmo-audit-service"]
+    container_name: fmo-audit
+    restart: unless-stopped
+    depends_on:
+      - emqx
+    ports:
+      - "9527:9527"
+    volumes:
+      - ./fas-data:/data
+    networks:
+      fmo:
+        ipv4_address: 172.30.0.2
+
+  # fmoweb 网页软电台（网页 + 后端 + 指纹采集代理）
+  fmoweb:
+    build: .   # 本地构建；若用 GHCR 镜像则改成 image: ghcr.io/<你的账号>/fmoweb:main
+    container_name: fmo-fmoweb
+    restart: unless-stopped
+    depends_on:
+      - emqx
+      - sas
+    ports:
+      - "9531:9531"
+    expose:
+      - "9530"
+    environment:
+      FMO_MYSQL_HOST: "${FMOWEB_MYSQL_HOST:?Set FMOWEB_MYSQL_HOST in .env}"
+      FMO_MYSQL_PORT: "${FMOWEB_MYSQL_PORT:?Set FMOWEB_MYSQL_PORT in .env}"
+      FMO_MYSQL_USER: "${FMOWEB_MYSQL_USER:?Set FMOWEB_MYSQL_USER in .env}"
+      FMO_MYSQL_PASSWORD: "${FMOWEB_MYSQL_PASSWORD:?Set FMOWEB_MYSQL_PASSWORD in .env}"
+      FMO_MYSQL_DB: "${FMOWEB_MYSQL_DB:?Set FMOWEB_MYSQL_DB in .env}"
+      FMO_EMQX_API: "${FMOWEB_EMQX_API:?Set FMOWEB_EMQX_API in .env}"
+      FMO_EMQX_USER: "${FMOWEB_EMQX_USER:?Set FMOWEB_EMQX_USER in .env}"
+      FMO_EMQX_PASSWORD: "${FMOWEB_EMQX_PASSWORD:?Set FMOWEB_EMQX_PASSWORD in .env}"
+      FMO_SERVER_CALLSIGN: "${SAS_SERVER_CALLSIGN:?Set SAS_SERVER_CALLSIGN in .env}"
+      FMO_SERVER_UID: "${SAS_SERVER_UID:?Set SAS_SERVER_UID in .env}"
+      FMO_SERVER_URL: "${FMOWEB_SERVER_URL:?Set FMOWEB_SERVER_URL in .env}"
+      FMO_SERVER_PORT: "${SAS_MQTT_PORT:?Set SAS_MQTT_PORT in .env}"
+      FMO_SERVER_FINGERPRINT: "${SAS_CERT_FINGERPRINT:?Set SAS_CERT_FINGERPRINT in .env}"
+      FMO_SMTP_HOST: "${FMOWEB_SMTP_HOST:-}"
+      FMO_SMTP_PORT: "${FMOWEB_SMTP_PORT:-465}"
+      FMO_SMTP_USER: "${FMOWEB_SMTP_USER:-}"
+      FMO_SMTP_PASSWORD: "${FMOWEB_SMTP_PASSWORD:-}"
+      FMO_SMTP_FROM: "${FMOWEB_SMTP_FROM:-}"
+      FMO_MAIL_PREFIX: "[FMO]-"
+      FMO_ADMIN_WECHAT: "${FMOWEB_ADMIN_WECHAT:-}"
+      FMO_ADMIN_PHONE: "${FMOWEB_ADMIN_PHONE:-}"
+      FMO_SAS_URL: "http://sas:8080/auth"
+    volumes:
+      - ./fmoweb-data/ca:/app/ca
+      - ./fmoweb-data/avatars:/app/avatars
+      - ./fas-data:/fas-data
+    networks:
+      fmo:
+        ipv4_address: 172.30.0.5
+
+networks:
+  fmo:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          gateway: 172.30.0.1

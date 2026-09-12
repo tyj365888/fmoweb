@@ -1,0 +1,2184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>FMO 网页软电台</title>
+<meta name="theme-color" content="#c8a573">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FMO">
+<link rel="manifest" href="/static/manifest.json">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/static/icon-192.png">
+<script src="/static/nacl.min.js"></script>
+<script src="/static/mqtt.min.js"></script>
+<script src="/static/sha256.min.js"></script>
+<script>window.OPUS_SCRIPT_LOCATION = '/static/';</script>
+<script src="/static/libopus-encoder.js" async></script>
+<script src="/static/libopus-decoder.js" async></script>
+<script src="/static/oggOpusEncoder.js" async></script>
+<script src="/static/oggOpusDecoder.js" async></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0b0b0b; --bg-card: #171514;
+    --header-grad: linear-gradient(135deg, #17130e, #2a2118);
+    --header-border: #2a2724; --header-text: #e6e2da;
+    --text: #e6e2da; --text-muted: #8a857e;
+    --accent: #c8a573; --accent-text: #1a1510;
+    --border: #2a2724; --mask: rgba(0,0,0,0.65);
+    --card-shadow: rgba(0,0,0,0.4); --search-bg: rgba(255,255,255,0.1);
+    --search-text: #e6e2da; --track: rgba(255,255,255,0.35);
+    --red: #e74c3c; --green: #2ecc71;
+  }
+  :root[data-theme="green"] {
+    --bg: #eef2ef; --bg-card: #ffffff;
+    --header-grad: linear-gradient(135deg, #0a7a4d, #0aa06f);
+    --header-border: #0a7a4d; --header-text: #ffffff;
+    --text: #12281f; --text-muted: #8aa097;
+    --accent: #0aa06f; --accent-text: #ffffff;
+    --border: #eef2ef; --mask: rgba(18,40,31,0.45);
+    --card-shadow: rgba(18,40,31,0.06); --search-bg: rgba(255,255,255,0.95);
+    --search-text: #12281f; --track: rgba(255,255,255,0.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #f5f6f8; --bg-card: #ffffff;
+    --header-grad: #ffffff; --header-border: #e0e0e0; --header-text: #1a1a1a;
+    --text: #1a1a1a; --text-muted: #8c8c8c;
+    --accent: #1976d2; --accent-text: #ffffff;
+    --border: #ececec; --mask: rgba(0,0,0,0.4);
+    --card-shadow: rgba(0,0,0,0.05); --search-bg: #f0f0f0;
+    --search-text: #1a1a1a; --track: rgba(0,0,0,0.2);
+  }
+  :root[data-theme="blue"] {
+    --bg: #0a1220; --bg-card: #121c2e;
+    --header-grad: linear-gradient(135deg, #0f1a2e, #16283f);
+    --header-border: #1e3a5f; --header-text: #dbe7ff;
+    --text: #dbe7ff; --text-muted: #7d8fa8;
+    --accent: #3b82f6; --accent-text: #ffffff;
+    --border: #1e3a5f; --mask: rgba(5,10,20,0.65);
+    --card-shadow: rgba(0,0,0,0.5); --search-bg: rgba(255,255,255,0.08);
+    --search-text: #dbe7ff; --track: rgba(255,255,255,0.3);
+  }
+  :root[data-theme="purple"] {
+    --bg: #120f1e; --bg-card: #1a1628;
+    --header-grad: linear-gradient(135deg, #1a1030, #2a1a4a);
+    --header-border: #3a2a5f; --header-text: #e8def7;
+    --text: #e8def7; --text-muted: #9a8cb8;
+    --accent: #a78bfa; --accent-text: #1a1030;
+    --border: #2f244a; --mask: rgba(10,5,20,0.65);
+    --card-shadow: rgba(0,0,0,0.5); --search-bg: rgba(255,255,255,0.08);
+    --search-text: #e8def7; --track: rgba(255,255,255,0.3);
+  }
+  :root[data-theme="rose"] {
+    --bg: #1a0f14; --bg-card: #241319;
+    --header-grad: linear-gradient(135deg, #2a1220, #3a1830);
+    --header-border: #5f2a45; --header-text: #ffe0ea;
+    --text: #ffe0ea; --text-muted: #b88a9c;
+    --accent: #f472b6; --accent-text: #1a0f14;
+    --border: #4a2038; --mask: rgba(20,5,12,0.65);
+    --card-shadow: rgba(0,0,0,0.5); --search-bg: rgba(255,255,255,0.08);
+    --search-text: #ffe0ea; --track: rgba(255,255,255,0.3);
+  }
+  :root[data-theme="sunset"] {
+    --bg: #1a120a; --bg-card: #241a10;
+    --header-grad: linear-gradient(135deg, #2a1a0a, #3a2512);
+    --header-border: #5f4020; --header-text: #ffe8cc;
+    --text: #ffe8cc; --text-muted: #b89a6a;
+    --accent: #f59e0b; --accent-text: #1a120a;
+    --border: #4a3018; --mask: rgba(20,10,5,0.65);
+    --card-shadow: rgba(0,0,0,0.5); --search-bg: rgba(255,255,255,0.08);
+    --search-text: #ffe8cc; --track: rgba(255,255,255,0.3);
+  }
+  html, body { overscroll-behavior-y: none; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); transition: background .2s, color .2s; }
+  .hidden { display: none !important; }
+
+  /* 登录门 */
+  .login-gate { position: fixed; inset: 0; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; }
+  .login-box { text-align: center; width: 86%; max-width: 360px; }
+  .login-title { font-size: 26px; font-weight: 700; }
+  .login-sub { font-size: 13px; color: var(--text-muted); margin: 8px 0 28px; }
+  .field { margin-bottom: 14px; text-align: left; }
+  .field label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+  .field input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); color: var(--text); font-size: 16px; outline: none; }
+  .btn { width: 100%; padding: 13px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; background: var(--accent); color: var(--accent-text); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .err { color: var(--red); font-size: 13px; margin-top: 10px; min-height: 18px; }
+
+  /* 顶栏 */
+  .header { position: fixed; top: 0; left: 0; right: 0; background: var(--header-grad); color: var(--header-text); padding: calc(12px + env(safe-area-inset-top)) 16px 12px; border-bottom: 1px solid var(--header-border); font-size: 17px; font-weight: 600; text-align: center; box-shadow: 0 1px 4px var(--card-shadow); z-index: 10; }
+  .header-row { display: flex; align-items: center; justify-content: center; position: relative; }
+  .header-title { letter-spacing: .5px; }
+  .header-sub { font-size: 11px; font-weight: 400; opacity: .8; margin-top: 1px; }
+  .theme-btn { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: var(--header-text); font-size: 18px; cursor: pointer; padding: 2px; }
+  .settings-btn { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: var(--header-text); font-size: 20px; cursor: pointer; padding: 2px; }
+  .logout-btn { position: absolute; right: 66px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: var(--header-text); font-size: 13px; cursor: pointer; opacity: .85; }
+  .search-input { margin-top: 10px; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; font-size: 14px; background: var(--search-bg); color: var(--search-text); outline: none; }
+  .search-input::placeholder { color: var(--text-muted); }
+  .mark-all-btn { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); color: var(--text); font-size: 13px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+  .rx-popup { position: fixed; top: calc(var(--header-h, 96px) + 12px); left: 50%; transform: translateX(-50%); background: var(--bg-card); border: 1px solid var(--accent); border-radius: 12px; padding: 12px 16px; z-index: 15; display: none; box-shadow: 0 4px 16px var(--card-shadow); font-size: 14px; min-width: 220px; }
+  .rx-popup.show { display: block; }
+  .rx-popup-title { font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+  .rx-popup-row { color: var(--text); margin: 3px 0; }
+  .rx-popup-row span { color: var(--accent); font-weight: 600; }
+  .rx-level { height: 4px; background: var(--bg); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .rx-level-fill { height: 100%; width: 0%; background: var(--green); border-radius: 2px; transition: width .08s linear; }
+
+  /* 语音记录 */
+  .list { padding: calc(var(--header-h, 96px) + 12px) 12px 96px; }
+  .voice-card { display: flex; align-items: center; background: var(--bg-card); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; box-shadow: 0 1px 3px var(--card-shadow); border-left: 3px solid var(--accent); }
+  .voice-card.unread { border-left-color: var(--green); background: linear-gradient(90deg, rgba(46,204,113,.14), var(--bg-card) 60%); }
+  .voice-card.unread .play-btn { box-shadow: 0 0 0 2px rgba(46,204,113,.55); }
+  .unread-badge { font-size: 10px; color: #fff; background: var(--green); border-radius: 4px; padding: 1px 6px; margin-left: 6px; vertical-align: middle; font-weight: 600; }
+  .voice-card.group-card { border-left: 3px dashed var(--text-muted); background: var(--bg); }
+  .avatar { position: relative; overflow: hidden; width: 44px; height: 44px; border-radius: 8px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; flex-shrink: 0; }
+  .avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+  .voice-info { flex: 1; margin-left: 12px; overflow: hidden; }
+  .voice-callsign { font-size: 16px; font-weight: 700; display: inline-block; cursor: pointer; }
+  .voice-meta { font-size: 13px; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; gap: 8px; }
+  .meta-dur { color: var(--accent); font-weight: 700; font-size: 15px; }
+  .play-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); border: none; color: var(--accent-text); font-size: 16px; cursor: pointer; flex-shrink: 0; }
+  .play-btn.playing { background: #e8a13c; }
+  .empty { text-align: center; color: var(--text-muted); padding: 60px 0; }
+
+  /* 浮窗 */
+  .mask { position: fixed; inset: 0; background: var(--mask); display: none; align-items: flex-end; justify-content: center; z-index: 110; }
+  .mask.show { display: flex; }
+  .popup { background: var(--bg-card); width: calc(100% - 28px); max-width: 400px; max-height: 80vh; display: flex; flex-direction: column; border-radius: 16px; padding: 18px 18px 12px; margin: 0 auto 10px; animation: slideUp .25s; }
+  .popup-body { overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1; min-height: 0; scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior: contain; }
+  body:has(.mask.show) { overflow: hidden; }
+  .popup-body::-webkit-scrollbar { display: none; }
+  .popup-footer { flex-shrink: 0; padding-top: 12px; }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .popup-header { display: flex; align-items: center; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .popup-header .avatar { width: 52px; height: 52px; font-size: 20px; }
+  .popup-header .name { margin-left: 12px; font-size: 20px; font-weight: 700; }
+  .popup-header .uid { margin-left: 12px; font-size: 13px; color: var(--text-muted); }
+  .detail-row { display: flex; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 15px; }
+  .detail-label { width: 110px; color: var(--text-muted); flex-shrink: 0; }
+  .detail-value { flex: 1; word-break: break-all; overflow-wrap: anywhere; }
+  .device-box { background: var(--bg); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 10px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 4px var(--card-shadow); }
+  .device-title { font-weight: 700; color: var(--accent); font-size: 14px; margin-bottom: 8px; }
+  .close-btn { width: 100%; padding: 12px; background: var(--accent); color: var(--accent-text); border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
+
+  /* 底部发送栏 */
+  .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-card); border-top: 1px solid var(--border); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 12px; z-index: 6; }
+  .bb-status { flex: 1; font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+  .bb-latency { margin-left: 8px; color: var(--accent); font-size: 11px; font-weight: 600; }
+  .bb-status .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); margin-right: 5px; }
+  .bb-status .dot.on { background: var(--green); }
+  .ptt-btn { width: 72px; height: 72px; border-radius: 50%; border: none; font-size: 14px; font-weight: 700; cursor: pointer; background: var(--accent); color: var(--accent-text); flex-shrink: 0; box-shadow: 0 3px 10px rgba(0,0,0,.4); transition: background .15s; user-select: none; -webkit-user-select: none; touch-action: none; }
+  .ptt-btn.tx { background: var(--red); color: #fff; }
+  .ptt-btn.rxbusy { background: #3a3a3a; color: #8a857e; }
+  .ptt-btn.off { background: #3a3a3a; color: #8a857e; }
+  .ptt-btn:active { transform: scale(.93); }
+  .ptt-btn.style-square { border-radius: 18px; }
+  .ptt-btn.style-capsule { border-radius: 999px; width: 132px; height: 66px; }
+  .ptt-btn.style-ring { box-shadow: 0 0 0 6px rgba(200,165,115,.28), 0 3px 10px rgba(0,0,0,.4); }
+  .bb-codec { display: flex; flex-direction: column; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 3px; flex-shrink: 0; }
+  .codec-opt { padding: 5px 10px; font-size: 11px; border-radius: 7px; cursor: pointer; color: var(--text-muted); text-align: center; white-space: nowrap; user-select: none; -webkit-user-select: none; }
+  .codec-opt.on { background: var(--accent); color: var(--accent-text); font-weight: 600; }
+  .pull-indicator { position: fixed; top: var(--header-h, 96px); left: 0; right: 0; height: 0; overflow: hidden; display: flex; align-items: flex-end; justify-content: center; z-index: 9; pointer-events: none; }
+  .pull-inner { display: flex; align-items: center; gap: 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 999px; padding: 8px 16px; box-shadow: 0 4px 18px rgba(0,0,0,.22); color: var(--text); font-size: 13px; font-weight: 600; opacity: 0; transform: translateY(10px); transition: opacity .18s ease, transform .18s ease; }
+  .pull-indicator.show .pull-inner { opacity: 1; transform: translateY(0); }
+  .pull-spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; flex-shrink: 0; display: none; }
+  .pull-indicator.spinning .pull-spinner { display: block; animation: pullspin .65s linear infinite; }
+  .pull-indicator:not(.spinning) .pull-arrow { display: block; }
+  .pull-arrow { display: none; color: var(--accent); font-size: 16px; line-height: 1; transition: transform .2s ease; }
+  .pull-indicator.ready .pull-arrow { transform: rotate(180deg); }
+  @keyframes pullspin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+  <div class="pull-indicator" id="pullIndicator"><div class="pull-inner"><span class="pull-spinner"></span><span class="pull-arrow">↓</span><span id="pullText">下拉刷新</span></div></div>
+  <div class="rx-popup" id="rxPopup">
+    <div class="rx-popup-title">📡 正在接收语音</div>
+    <div class="rx-popup-row">呼号：<span id="rxCallsign">—</span></div>
+    <div class="rx-popup-row">编码：<span id="rxCodec">—</span></div>
+    <div class="rx-popup-row">电台名称：<span id="rxModel">—</span></div>
+    <div class="rx-popup-row">工作频率：<span id="rxFreq">—</span></div>
+    <div class="rx-popup-row">地区：<span id="rxRegion">—</span></div>
+    <div class="rx-popup-row">高度：<span id="rxHeight">—</span></div>
+    <div class="rx-level"><div class="rx-level-fill" id="rxLevelFill"></div></div>
+  </div>
+  <div class="rx-popup" id="txPopup">
+    <div class="rx-popup-title">📣 正在发送语音</div>
+    <div class="rx-popup-row">呼号：<span id="txCallsign">—</span></div>
+    <div class="rx-popup-row">麦克风电平：<span id="txMicLevel">0%</span></div>
+  </div>
+
+  <!-- 登录门 -->
+  <div class="login-gate" id="loginGate">
+    <div class="login-box">
+      <div class="login-title">📻 FMO 网页软电台</div>
+      <div class="login-sub" id="loginSub">首次用 APRS passcode 登录 · 开通发送后改用密码</div>
+      <div style="display:flex;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px;margin-bottom:12px;">
+        <button class="login-type-btn on" data-type="callsign" style="flex:1;padding:6px 0;border:none;border-radius:6px;background:var(--accent);color:var(--accent-text);font-size:13px;cursor:pointer;">呼号</button>
+        <button class="login-type-btn" data-type="web" style="flex:1;padding:6px 0;border:none;border-radius:6px;background:transparent;color:var(--text-muted);font-size:13px;cursor:pointer;">普通用户</button>
+      </div>
+      <div class="field"><label id="loginCallsignLabel">呼号 Callsign</label><input id="loginCallsign" type="text" placeholder="如 BA7ABC" autocapitalize="characters"></div>
+      <div class="field"><label id="loginSecretLabel">密码 / APRS Passcode</label><input id="loginSecret" type="password" placeholder="密码 / passcode"></div>
+      <button class="btn" id="loginBtn">登录</button>
+      <div class="err" id="loginErr"></div>
+      <div style="text-align:center;margin-top:10px;">
+        <a href="javascript:void(0)" id="forgotPwLink" style="color:var(--text-muted);font-size:13px;">忘记密码？</a>
+        <span style="color:var(--text-muted);margin:0 8px;">·</span>
+        <a href="javascript:void(0)" id="registerLink" style="color:var(--accent);font-size:13px;">注册普通用户</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 注册普通用户 -->
+  <div class="login-gate hidden" id="regGate">
+    <div class="login-box">
+      <div class="login-title">📝 注册普通用户</div>
+      <div class="login-sub">注册后需管理员审核，审核通过才能登录</div>
+      <div class="field"><label>用户名（6-8 位字母数字）</label><input id="regUsername" type="text" maxlength="8" placeholder="如 abc123"></div>
+      <div class="field"><label>密码（大写+小写+数字，≥6 位）</label><input id="regPassword" type="password" placeholder="密码"></div>
+      <div class="field"><label>邮箱</label><input id="regEmail" type="text" placeholder="用于找回密码"></div>
+      <button class="btn" id="regBtn">提交注册</button>
+      <button class="btn" id="regBackBtn" style="background:var(--border);color:var(--text);margin-top:8px;">返回登录</button>
+      <div class="err" id="regErr"></div>
+    </div>
+  </div>
+
+  <!-- 强制设置密码（三元组核验通过后） -->
+  <div class="login-gate hidden" id="pwGate">
+    <div class="login-box">
+      <div class="login-title">🔒 设置登录密码</div>
+      <div class="login-sub">核验通过后设置密码，用于后续登录（passcode 失效）</div>
+      <div class="field"><label>呼号</label><input id="pwCallsign" type="text" disabled></div>
+      <div class="field"><label>新密码</label><input id="pwPassword" type="password" placeholder="大写+小写+数字，≥6 位"></div>
+      <div class="field"><label>确认密码</label><input id="pwPassword2" type="password" placeholder="再输入一次"></div>
+      <button class="btn" id="pwBtn">设置密码并进入</button>
+      <div class="err" id="pwErr"></div>
+    </div>
+  </div>
+
+  <!-- 主界面 -->
+  <div class="hidden" id="main">
+    <div class="header">
+      <div class="header-row">
+        <button id="themeBtn" class="theme-btn" title="切换主题">◐</button>
+        <button id="muteBtn" class="theme-btn" title="静音" style="left:52px;">🔊</button>
+        <div>
+          <div class="header-title">📻 FMO 语音记录</div>
+          <div class="header-sub">NFM Over Internet · 业余无线电</div>
+        </div>
+        <button id="logoutBtn" class="logout-btn" title="退出登录">退出</button>
+        <button id="settingsBtn" class="settings-btn" title="设置">⚙️</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <input id="search" class="search-input" type="text" placeholder="🔍 输入呼号筛选语音（如 BA7ABC，留空显示全部）" style="flex:1;margin-top:0;">
+        <button id="markAllReadBtn" class="mark-all-btn" title="把所有语音标记为已读">全部已读</button>
+      </div>
+    </div>
+
+    <div class="list" id="list"><div class="empty">加载中...</div></div>
+
+    <!-- 底部发送栏 -->
+    <div class="bottom-bar">
+      <div class="bb-status" id="bbStatus"><span class="dot"></span><span id="bbStatusText">未开通发送</span><span id="latencyDisplay" class="bb-latency"></span><span id="onlineCount" class="bb-latency"></span></div>
+      <div class="bb-codec" id="codecSwitch" title="发送编码方式：高保真 RADPCM / 高压缩 OPUS">
+        <span class="codec-opt" data-codec="opus">高压缩</span>
+        <span class="codec-opt" data-codec="radpcm">高保真</span>
+      </div>
+      <button class="ptt-btn off" id="pttBtn">按住<br>说话</button>
+    </div>
+  </div>
+
+  <!-- 设置浮窗 -->
+  <div class="mask" id="settingsMask">
+    <div class="popup" id="settingsPopup">
+      <div class="popup-header"><div class="name">⚙️ 设置</div></div>
+      <div class="popup-body">
+        <div class="note" style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:10px;">播放语音、发送语音都需核验真实 FMO 设备的 <b>呼号 + UID + 证书指纹</b>，通过后签发软件身份。<b>该 FMO 设备必须先连接过系统</b>（连接记录已存档），否则无法核验。</div>
+        <div class="field"><label>呼号 Callsign</label><input id="issCallsign" type="text" autocapitalize="characters"></div>
+        <div class="field"><label>真实设备 UID</label><input id="issUid" type="number" placeholder="如 12345"></div>
+        <div class="field"><label>证书指纹</label><input id="issFp" type="text" placeholder="设备菜单里的证书指纹"></div>
+        <button class="btn" id="issueBtn">核验并开通</button>
+        <div class="err" id="issueErr"></div>
+        <div id="identityPanel" style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;"></div>
+        <div id="changePwPanel" style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
+          <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:8px;">修改密码</div>
+          <div class="field"><label>旧密码</label><input id="pwOld" type="password" placeholder="当前密码（未设置过则留空）"></div>
+          <div class="field"><label>新密码</label><input id="pwNew1" type="password" placeholder="大写+小写+数字，≥6 位"></div>
+          <div class="field"><label>确认新密码</label><input id="pwNew2" type="password" placeholder="再输入一次"></div>
+          <button class="btn" id="changePwBtn">修改密码</button>
+          <div class="err" id="changePwErr"></div>
+        </div>
+        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
+          <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:8px;">按住说话按钮样式</div>
+          <div id="pttStyleOpts" style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="ptt-style-opt" data-style="round" style="padding:6px 12px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;cursor:pointer;">圆形</button>
+            <button class="ptt-style-opt" data-style="square" style="padding:6px 12px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;cursor:pointer;">方形</button>
+            <button class="ptt-style-opt" data-style="capsule" style="padding:6px 12px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;cursor:pointer;">胶囊</button>
+            <button class="ptt-style-opt" data-style="ring" style="padding:6px 12px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;cursor:pointer;">环形</button>
+          </div>
+        </div>
+        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
+          <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:8px;">头像</div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div id="avatarPreview" class="avatar" style="width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;font-size:22px;">?</div>
+            <div style="flex:1;">
+              <input id="avatarFile" type="file" accept="image/*" style="display:none;">
+              <button class="btn" id="avatarPickBtn" style="padding:10px;">选择图片</button>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">支持 JPG/PNG/GIF/WebP，自动压缩为缩略图存储（不存原图）</div>
+          <button class="btn" id="avatarSaveBtn" style="margin-top:10px;display:none;">保存头像</button>
+          <div class="err" id="avatarErr"></div>
+        </div>
+        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
+          <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:8px;">我的电台信息（发送时附带）</div>
+          <div class="field"><label>网格 Grid（选填）</label><input id="rigGrid" type="text" placeholder="如 OL67nu"></div>
+          <div class="field"><label>电台型号</label><input id="rigModel" type="text" placeholder="如 TYJ"></div>
+          <div class="field"><label>工作频率 MHz</label><input id="rigFreq" type="number" step="0.001" placeholder="如 438.5"></div>
+          <div class="field"><label>地区</label><input id="rigRegion" type="text" placeholder="如 湖南株洲"></div>
+          <div class="field"><label>高度 米</label><input id="rigHeight" type="number" placeholder="如 98"></div>
+          <button class="btn" id="rigSaveBtn" style="margin-top:8px;">保存电台信息</button>
+          <div class="err" id="rigErr"></div>
+        </div>
+        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
+          <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:8px;">邮箱（找回密码用）</div>
+          <div class="field"><label>邮箱</label><div style="display:flex;gap:8px;"><input id="settingEmail" type="email" placeholder="用于找回密码" style="flex:1;"><button class="btn" id="emailSendBtn" style="width:auto;padding:8px 14px;flex-shrink:0;white-space:nowrap;">发送验证码</button></div></div>
+          <div class="field" style="margin-top:8px;"><label>验证码</label><input id="settingEmailCode" type="text" maxlength="6" placeholder="邮箱收到的 6 位验证码"></div>
+          <button class="btn" id="emailSaveBtn" style="margin-top:8px;">验证并保存</button>
+          <div class="err" id="emailErr"></div>
+        </div>
+        <div id="adminReviewPanel" style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;display:none;">
+          <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:8px;">审核普通用户注册</div>
+          <div id="pendingUsers" style="font-size:12px;color:var(--text-muted);">加载中...</div>
+        </div>
+        <div id="userManagePanel" style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;display:none;">
+          <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:8px;">用户管理（拉黑 / 禁言）</div>
+          <div id="userManageList" style="font-size:12px;color:var(--text-muted);">加载中...</div>
+        </div>
+      </div>
+      <div class="popup-footer"><button class="close-btn" id="settingsClose">关闭</button></div>
+    </div>
+  </div>
+
+  <!-- 语音详情浮窗 -->
+  <div class="mask" id="mask"><div class="popup" id="popup"></div></div>
+  <!-- APRS 浮窗 -->
+  <div class="mask" id="aprsMask"><div class="popup" id="aprsPopup"></div></div>
+
+  <!-- 语音授权浮窗（登录后一次性授权麦克风 + 播放声音） -->
+  <div class="mask" id="voiceAuthMask">
+    <div class="popup" style="max-width:320px;">
+      <div class="popup-header"><div class="name">🔊 启用语音</div></div>
+      <div class="popup-body" style="font-size:13px;color:var(--text-muted);line-height:1.7;">首次使用需授权<b>麦克风</b>和<b>语音播放</b>。点击下方按钮后浏览器会弹出授权提示，请选「允许」，即可正常收发语音。</div>
+      <div class="popup-footer"><button class="close-btn" id="voiceAuthBtn" style="width:100%;background:var(--accent);color:var(--accent-text);">授权并启用</button></div>
+    </div>
+  </div>
+
+  <!-- 通用对话框 -->
+  <div class="mask" id="dialogMask">
+    <div class="popup" style="max-width:320px;">
+      <div class="popup-header"><div class="name" id="dialogTitle">提示</div></div>
+      <div class="popup-body" id="dialogBody" style="font-size:14px;line-height:1.6;word-break:break-all;"></div>
+      <div class="popup-footer" id="dialogFooter"></div>
+    </div>
+  </div>
+
+  <audio id="player" style="display:none" playsinline webkit-playsinline preload="auto"></audio>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+
+/* 通用对话框（统一弹窗样式） */
+function escHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function closeDialog() { $('dialogMask').classList.remove('show'); }
+function showAlert(title, message) {
+  $('dialogTitle').textContent = title;
+  $('dialogBody').innerHTML = escHtml(message).replace(/\n/g, '<br>');
+  $('dialogFooter').innerHTML = '<button class="close-btn" onclick="closeDialog()">确定</button>';
+  $('dialogMask').classList.add('show');
+}
+function showLoading(message) {
+  $('dialogTitle').textContent = '请稍候';
+  $('dialogBody').innerHTML = escHtml(message).replace(/\n/g, '<br>');
+  $('dialogFooter').innerHTML = '';
+  $('dialogMask').classList.add('show');
+}
+function showConfirm(title, message, onOk) {
+  $('dialogTitle').textContent = title;
+  $('dialogBody').innerHTML = escHtml(message).replace(/\n/g, '<br>');
+  $('dialogFooter').innerHTML = '<button class="close-btn" id="dlgOk" style="background:var(--red);color:#fff;margin-bottom:8px;">确定</button><button class="close-btn" onclick="closeDialog()" style="background:var(--border);color:var(--text);">取消</button>';
+  $('dlgOk').onclick = () => { closeDialog(); onOk(); };
+  $('dialogMask').classList.add('show');
+}
+function showPrompt(title, placeholder, value, onOk) {
+  $('dialogTitle').textContent = title;
+  $('dialogBody').innerHTML = '<input id="dlgInput" type="text" placeholder="' + escHtml(placeholder || '') + '" value="' + escHtml(value || '') + '" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px;outline:none;">';
+  $('dialogFooter').innerHTML = '<button class="close-btn" id="dlgOk" style="margin-bottom:8px;">确定</button><button class="close-btn" onclick="closeDialog()" style="background:var(--border);color:var(--text);">取消</button>';
+  $('dlgOk').onclick = () => { const v = $('dlgInput').value; closeDialog(); onOk(v); };
+  $('dialogMask').classList.add('show');
+  setTimeout(() => { const inp = $('dlgInput'); if (inp) inp.focus(); }, 60);
+}
+function openSettings() {
+  loadIdentityPanel();
+  settingsMask.classList.add('show');
+  startIdentityPoll();
+  initAvatarPreview();
+  loadRigInfo();
+  loadEmailSetting();
+  refreshPendingUsers();
+  refreshUserManage();
+}
+/* 管理员审核普通用户（仅管理员可见） */
+function refreshPendingUsers() {
+  const admin = currentCallsign();
+  const ident = savedIdentity();
+  const serverCallsign = (ident && ident.server && ident.server.targetCallsign) || '';
+  if (!serverCallsign || admin !== serverCallsign) { $('adminReviewPanel').style.display = 'none'; return; }
+  $('adminReviewPanel').style.display = 'block';
+  fetch('/api/admin/pending-users?admin=' + encodeURIComponent(admin)).then(r => r.json()).then(d => {
+    const items = d.items || [];
+    if (items.length === 0) { $('pendingUsers').innerHTML = '暂无待审核用户'; return; }
+    let html = '';
+    for (const u of items) {
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><div><div>' + escHtml(u.callsign) + '</div><div style="color:var(--text-muted);">' + escHtml(u.email || '') + ' · ' + (u.created_at || '') + '</div></div><div style="display:flex;gap:6px;"><button class="review-btn" data-cs="' + escHtml(u.callsign) + '" data-act="approve" style="padding:4px 10px;border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:6px;font-size:12px;cursor:pointer;">通过</button><button class="review-btn" data-cs="' + escHtml(u.callsign) + '" data-act="reject" style="padding:4px 10px;border:1px solid var(--red);background:transparent;color:var(--red);border-radius:6px;font-size:12px;cursor:pointer;">拒绝</button></div></div>';
+    }
+    $('pendingUsers').innerHTML = html;
+    $('pendingUsers').querySelectorAll('.review-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const cs = btn.dataset.cs, act = btn.dataset.act;
+        const r = await fetch('/api/admin/review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ admin: currentCallsign(), callsign: cs, action: act }) });
+        const d = await r.json();
+        if (r.ok) refreshPendingUsers(); else showAlert('审核失败', d.error || '');
+      });
+    });
+  }).catch(() => { $('pendingUsers').innerHTML = '加载失败'; });
+}
+/* 管理员用户管理：拉黑 / 禁言（仅管理员可见） */
+function refreshUserManage() {
+  const admin = currentCallsign();
+  const ident = savedIdentity();
+  const serverCallsign = (ident && ident.server && ident.server.targetCallsign) || '';
+  if (!serverCallsign || admin !== serverCallsign) { $('userManagePanel').style.display = 'none'; return; }
+  $('userManagePanel').style.display = 'block';
+  fetch('/api/admin/users?admin=' + encodeURIComponent(admin)).then(r => r.json()).then(d => {
+    const items = d.items || [];
+    if (items.length === 0) { $('userManageList').innerHTML = '暂无用户'; return; }
+    let html = '';
+    for (const u of items) {
+      const banned = !!u.banned, muted = !!u.muted;
+      const tags = [];
+      if (banned) tags.push('<span style="color:var(--red);">已拉黑</span>');
+      if (muted) tags.push('<span style="color:#f39c12;">已禁言</span>');
+      if (u.account_type === 'web') tags.push('<span style="color:var(--text-muted);">WEB</span>');
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">' +
+        '<div style="min-width:0;"><div>' + escHtml(u.callsign) + (tags.length ? ' ' + tags.join(' ') : '') + '</div><div style="color:var(--text-muted);">' + (u.created_at || '') + '</div></div>' +
+        '<div style="display:flex;gap:6px;flex-shrink:0;">' +
+        '<button class="um-btn" data-cs="' + escHtml(u.callsign) + '" data-type="ban" data-on="' + (banned ? '0' : '1') + '" style="padding:4px 10px;border:1px solid ' + (banned ? 'var(--green)' : 'var(--red)') + ';background:transparent;color:' + (banned ? 'var(--green)' : 'var(--red)') + ';border-radius:6px;font-size:12px;cursor:pointer;">' + (banned ? '解除拉黑' : '拉黑') + '</button>' +
+        '<button class="um-btn" data-cs="' + escHtml(u.callsign) + '" data-type="mute" data-on="' + (muted ? '0' : '1') + '" style="padding:4px 10px;border:1px solid #f39c12;background:transparent;color:#f39c12;border-radius:6px;font-size:12px;cursor:pointer;">' + (muted ? '解除禁言' : '禁言') + '</button>' +
+        '<button class="um-btn" data-cs="' + escHtml(u.callsign) + '" data-type="del" style="padding:4px 10px;border:1px solid var(--red);background:transparent;color:var(--red);border-radius:6px;font-size:12px;cursor:pointer;">删除</button>' +
+        '</div></div>';
+    }
+    $('userManageList').innerHTML = html;
+    $('userManageList').querySelectorAll('.um-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const cs = btn.dataset.cs, type = btn.dataset.type;
+        if (type === 'del') {
+          showConfirm('删除用户', '确定要删除用户 ' + cs + ' 吗？将清除其账号、软件身份和核验记录，且不可恢复。', async () => {
+            const r = await fetch('/api/admin/delete-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ admin: currentCallsign(), callsign: cs }) });
+            const d = await r.json();
+            if (r.ok) refreshUserManage(); else showAlert('删除失败', d.error || '');
+          });
+          return;
+        }
+        const on = btn.dataset.on === '1';
+        const url = type === 'ban' ? '/api/admin/ban' : '/api/admin/mute';
+        const payload = { admin: currentCallsign(), callsign: cs };
+        if (type === 'ban') payload.banned = on; else payload.muted = on;
+        const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const d = await r.json();
+        if (r.ok) refreshUserManage(); else showAlert('操作失败', d.error || '');
+      });
+    });
+  }).catch(() => { $('userManageList').innerHTML = '加载失败'; });
+}
+function showGoVerify() {
+  $('dialogTitle').textContent = '提示';
+  $('dialogBody').innerHTML = escHtml('未核验并开通不能播放语音，请核验并开通后重试').replace(/\n/g, '<br>');
+  $('dialogFooter').innerHTML = '<button class="close-btn" id="dlgGo" style="margin-bottom:8px;">去开通</button><button class="close-btn" onclick="closeDialog()" style="background:var(--border);color:var(--text);">确认</button>';
+  $('dlgGo').onclick = () => { closeDialog(); openSettings(); };
+  $('dialogMask').classList.add('show');
+}
+/* 头像：预览 + 客户端缩略 + 上传 */
+function initAvatarPreview() {
+  const cs = currentCallsign();
+  const prev = $('avatarPreview');
+  if (!prev) return;
+  prev.innerHTML = '<span>' + (cs[0] || '?') + '</span><img class="avatar-img" style="border-radius:50%;" src="/api/avatar/' + encodeURIComponent(cs) + '?t=' + Date.now() + '" onerror="this.remove()">';
+}
+function resizeAvatar(file, maxSize) {
+  maxSize = maxSize || 200;
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      let dataUrl;
+      try { dataUrl = canvas.toDataURL('image/jpeg', 0.85); } catch (e) { dataUrl = canvas.toDataURL('image/png'); }
+      URL.revokeObjectURL(img.src);
+      resolve(dataUrl);
+    };
+    img.onerror = () => { URL.revokeObjectURL(img.src); reject(new Error('图片无法读取，请换一个文件')); };
+    img.src = URL.createObjectURL(file);
+  });
+}
+let avatarDataUrl = null;
+$('avatarPickBtn').addEventListener('click', () => $('avatarFile').click());
+$('avatarFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  resizeAvatar(file).then((dataUrl) => {
+    avatarDataUrl = dataUrl;
+    $('avatarPreview').innerHTML = '<img class="avatar-img" style="border-radius:50%;" src="' + dataUrl + '">';
+    $('avatarSaveBtn').style.display = 'block';
+    $('avatarErr').textContent = '';
+  }).catch((err) => { $('avatarErr').textContent = err.message; });
+});
+$('avatarSaveBtn').addEventListener('click', async () => {
+  if (!avatarDataUrl) return;
+  $('avatarSaveBtn').disabled = true;
+  try {
+    const r = await fetch('/api/avatar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callsign: currentCallsign(), image: avatarDataUrl }) });
+    const data = await r.json();
+    if (!r.ok) { $('avatarErr').textContent = data.error || ('HTTP ' + r.status); return; }
+    avatarDataUrl = null;
+    $('avatarSaveBtn').style.display = 'none';
+    showAlert('头像', '头像已更新');
+    const t = Date.now();
+    listEl.querySelectorAll('.avatar[data-callsign="' + currentCallsign() + '"] .avatar-img').forEach(img => { img.src = '/api/avatar/' + encodeURIComponent(currentCallsign()) + '?t=' + t; });
+  } catch (e) { $('avatarErr').textContent = '上传失败: ' + e.message; }
+  finally { $('avatarSaveBtn').disabled = false; }
+});
+/* 电台信息（USER_RIG 发送值，用户在设置里配置） */
+function loadRigInfo() {
+  const rig = getRigInfo();
+  $('rigGrid').value = rig.grid || '';
+  $('rigModel').value = rig.model || '';
+  $('rigFreq').value = rig.freq || '';
+  $('rigRegion').value = rig.region || '';
+  $('rigHeight').value = rig.height || '';
+}
+$('rigSaveBtn').addEventListener('click', () => {
+  const info = { grid: $('rigGrid').value.trim(), model: $('rigModel').value.trim(), freq: $('rigFreq').value.trim(), region: $('rigRegion').value.trim(), height: $('rigHeight').value.trim() };
+  try { localStorage.setItem('fmo_rig_info', JSON.stringify(info)); } catch (e) {}
+  const cs = currentCallsign();
+  if (cs) fetch('/api/rig-profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callsign: cs, rig: info }) }).catch(() => {});
+  $('rigErr').textContent = '已保存，发送时自动附带';
+  setTimeout(() => { $('rigErr').textContent = ''; }, 2000);
+});
+/* 登录后从服务器拉取该呼号的电台信息（跨设备统一，本地无配置时用服务器值） */
+function syncRigProfileFromServer() {
+  const cs = currentCallsign();
+  if (!cs) return;
+  fetch('/api/rig-profile/' + encodeURIComponent(cs)).then(r => r.json()).then(d => {
+    if (d && d.rig && Object.keys(d.rig).length) {
+      const local = getRigInfo();
+      const merged = Object.assign({}, d.rig, local);
+      try { localStorage.setItem('fmo_rig_info', JSON.stringify(merged)); } catch (e) {}
+      loadRigInfo();
+    }
+  }).catch(() => {});
+}
+/* 邮箱设置（找回密码用）：先发验证码，验证通过才保存 */
+$('emailSendBtn').addEventListener('click', () => {
+  const cs = currentCallsign();
+  if (!cs) return;
+  const email = $('settingEmail').value.trim();
+  if (!email || email.indexOf('@') < 0) { $('emailErr').textContent = '请输入有效邮箱'; return; }
+  $('emailSendBtn').disabled = true;
+  fetch('/api/email/send-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callsign: cs, email }) }).then(r => r.json()).then(d => {
+    if (d && d.ok) { $('emailErr').textContent = d.message || '验证码已发送'; }
+    else { $('emailErr').textContent = (d && d.error) || '发送失败'; }
+  }).catch(() => { $('emailErr').textContent = '发送失败'; }).finally(() => { $('emailSendBtn').disabled = false; });
+});
+$('emailSaveBtn').addEventListener('click', () => {
+  const cs = currentCallsign();
+  if (!cs) return;
+  const email = $('settingEmail').value.trim();
+  const code = $('settingEmailCode').value.trim();
+  if (!code) { $('emailErr').textContent = '请输入验证码'; return; }
+  fetch('/api/email/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callsign: cs, email, code }) }).then(r => r.json()).then(d => {
+    if (d && d.ok) { $('emailErr').textContent = '邮箱已绑定'; setTimeout(() => { $('emailErr').textContent = ''; }, 2000); }
+    else { $('emailErr').textContent = (d && d.error) || '验证失败'; }
+  }).catch(() => { $('emailErr').textContent = '验证失败'; });
+});
+function loadEmailSetting() {
+  const cs = currentCallsign();
+  if (!cs) return;
+  fetch('/api/email/' + encodeURIComponent(cs)).then(r => r.json()).then(d => {
+    if (d && d.email) $('settingEmail').value = d.email;
+  }).catch(() => {});
+}
+
+/* ================= 基础：base64url / CBOR / SHA-256 / passcode ================= */
+function b64urlEncode(bytes) {
+  let bin = ''; for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64urlDecode(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '=';
+  const bin = atob(s); const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+function concatBytes(...arrays) {
+  let len = 0; arrays.forEach(a => len += a.length);
+  const out = new Uint8Array(len); let off = 0;
+  arrays.forEach(a => { out.set(a, off); off += a.length; });
+  return out;
+}
+function cborUint(v) {
+  if (v < 24) return [v];
+  if (v < 256) return [0x18, v];
+  if (v < 65536) return [0x19, (v >> 8) & 0xff, v & 0xff];
+  if (v < 4294967296) return [0x1a, Math.floor(v / 16777216) & 0xff, Math.floor(v / 65536) & 0xff, Math.floor(v / 256) & 0xff, v & 0xff];
+  const hi = Math.floor(v / 4294967296), lo = v % 4294967296;
+  return [0x1b, (hi>>>24)&0xff,(hi>>>16)&0xff,(hi>>>8)&0xff,hi&0xff,(lo>>>24)&0xff,(lo>>>16)&0xff,(lo>>>8)&0xff,lo&0xff];
+}
+function cborText(s) {
+  const b = new TextEncoder().encode(s); const n = b.length;
+  if (n < 24) return concatBytes([0x60 | n], b);
+  if (n < 256) return concatBytes([0x78, n], b);
+  return concatBytes([0x79, (n >> 8) & 0xff, n & 0xff], b);
+}
+function cborBytes(b) {
+  const n = b.length;
+  if (n < 24) return concatBytes([0x40 | n], b);
+  if (n < 256) return concatBytes([0x58, n], b);
+  return concatBytes([0x59, (n >> 8) & 0xff, n & 0xff], b);
+}
+function cborArray(n) { return n < 24 ? [0x80 | n] : [0x98, n]; }
+function sha256Bytes(bytes) { return new Uint8Array(sha256.array(bytes)); }
+function aprsPasscode(callsign) {
+  const cs = callsign.trim().toUpperCase(); let hash = 0x73e2;
+  for (let i = 0; i < cs.length; i += 2) { hash ^= cs.charCodeAt(i) << 8; if (i + 1 < cs.length) hash ^= cs.charCodeAt(i + 1); }
+  return (hash & 0x7fff).toString();
+}
+
+/* ================= 证书 TBS / proof / password ================= */
+function userCertTbs(userCert) {
+  let a = cborArray(9);
+  a = concatBytes(a, cborText('FMO'), cborUint(4), cborText('userCert'));
+  a = concatBytes(a, cborUint(userCert.issuerSn));
+  a = concatBytes(a, cborText(userCert.subject.callsign.toUpperCase()));
+  a = concatBytes(a, cborUint(userCert.subject.uid));
+  a = concatBytes(a, cborBytes(b64urlDecode(userCert.subject.publicKey)));
+  a = concatBytes(a, cborUint(userCert.iat), cborUint(userCert.exp));
+  return a;
+}
+function certFingerprint(userCert) { return b64urlEncode(sha256Bytes(userCertTbs(userCert))); }
+function proofTbs(serverUid, targetCallsign, targetUid, role, targetUrl, targetPort, serverFpBytes, timestamp, userFpBytes) {
+  let a = cborArray(12);
+  a = concatBytes(a, cborText('FMO'), cborUint(4), cborText('serverAuthorizerReqHttp'));
+  a = concatBytes(a, cborUint(serverUid), cborText(targetCallsign.toUpperCase()), cborUint(targetUid));
+  a = concatBytes(a, cborText(role), cborText(targetUrl), cborUint(targetPort));
+  a = concatBytes(a, cborBytes(serverFpBytes), cborUint(timestamp), cborBytes(userFpBytes));
+  return a;
+}
+function buildPassword(interCert, userCert, userSeed, server) {
+  const timestamp = Math.floor(Date.now() / 1000);
+  const serverFp = b64urlDecode(server.serverFingerprint);
+  const userFp = sha256Bytes(userCertTbs(userCert));
+  const tbs = proofTbs(server.targetUID, server.targetCallsign, server.targetUID, 'user',
+                       server.targetUrl, server.targetPort, serverFp, timestamp, userFp);
+  const keypair = nacl.sign.keyPair.fromSeed(userSeed);
+  const sig = nacl.sign.detached(tbs, keypair.secretKey);
+  const payload = {
+    certPackage: { intermediateCert: interCert, userCert: userCert },
+    targetCallsign: server.targetCallsign, targetUID: server.targetUID, role: 'user',
+    targetUrl: server.targetUrl, targetPort: server.targetPort,
+    serverFingerprint: server.serverFingerprint, timestamp: timestamp,
+    proof: { signature: b64urlEncode(sig) },
+  };
+  return b64urlEncode(new TextEncoder().encode(JSON.stringify(payload)));
+}
+
+/* ================= IMA ADPCM ================= */
+const IMA_STEP = [7,8,9,10,11,12,13,14,16,17,19,21,23,25,28,31,34,37,41,45,50,55,60,66,73,80,88,97,107,118,130,143,157,173,190,209,230,253,279,307,337,371,408,449,494,544,598,658,724,796,876,963,1060,1166,1282,1411,1552,1707,1878,2066,2272,2499,2749,3024,3327,3660,4026,4428,4871,5358,5894,6484,7132,7845,8630,9493,10442,11487,12635,13899,15289,16818,18500,20350,22385,24623,27086,29794,32767];
+const IMA_IDX = [-1,-1,-1,-1,2,4,6,8,-1,-1,-1,-1,2,4,6,8];
+const R = 32735 / 32768;
+function imaEncodeSample(sample, st) {
+  const diff = sample - st.predictor; const sign = diff < 0 ? 8 : 0;
+  let delta = Math.abs(diff); let step = IMA_STEP[st.stepIndex];
+  let vpdiff = step >> 3; let code = 0;
+  if (delta >= step) { code |= 4; delta -= step; vpdiff += step; }
+  step >>= 1;
+  if (delta >= step) { code |= 2; delta -= step; vpdiff += step; }
+  step >>= 1;
+  if (delta >= step) { code |= 1; vpdiff += step; }
+  st.predictor = (sign ? st.predictor - vpdiff : st.predictor + vpdiff);
+  st.predictor = Math.max(-32768, Math.min(32767, st.predictor));
+  st.stepIndex = Math.max(0, Math.min(88, st.stepIndex + IMA_IDX[code | sign]));
+  return code | sign;
+}
+function imaDecodeSample(code, st) {
+  let step = IMA_STEP[st.stepIndex]; let delta = step >> 3;
+  if (code & 1) delta += step >> 2;
+  if (code & 2) delta += step >> 1;
+  if (code & 4) delta += step;
+  st.predictor = (code & 8) ? st.predictor - delta : st.predictor + delta;
+  st.predictor = Math.max(-32768, Math.min(32767, st.predictor));
+  st.stepIndex = Math.max(0, Math.min(88, st.stepIndex + IMA_IDX[code]));
+  return st.predictor;
+}
+function encodeRadpcm(pcm, state) {
+  const frame = new Uint8Array(328);
+  frame[0] = 0; frame[1] = 0;
+  const recov = state.predictor & 0xffff;
+  frame[2] = recov & 0xff; frame[3] = (recov >> 8) & 0xff;
+  frame[4] = state.stepIndex; frame[5] = 0;
+  frame[6] = 320 & 0xff; frame[7] = (320 >> 8) & 0xff;
+  for (let i = 0; i < 320; i++) {
+    const hi = imaEncodeSample(pcm[i * 2], state);
+    const lo = imaEncodeSample(pcm[i * 2 + 1], state);
+    frame[8 + i] = (hi << 4) | lo;
+  }
+  return frame;
+}
+function decodeRadpcm(frame, st) {
+  const recov = (frame[2] | (frame[3] << 8)) & 0xffff;
+  st.predictor = recov >= 32768 ? recov - 65536 : recov;
+  st.stepIndex = frame[4];
+  const samples = new Int16Array(640);
+  for (let i = 0; i < 320; i++) {
+    const b = frame[8 + i];
+    samples[i * 2] = imaDecodeSample((b >> 4) & 15, st);
+    samples[i * 2 + 1] = imaDecodeSample(b & 15, st);
+  }
+  return samples;
+}
+
+/* ================= CRC32 + FMO 报文 ================= */
+const CRC_TABLE = (() => { const t = new Uint32Array(256); for (let i = 0; i < 256; i++) { let c = i; for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[i] = c >>> 0; } return t; })();
+function crc32(bytes) { let crc = 0xFFFFFFFF; for (let i = 0; i < bytes.length; i++) crc = CRC_TABLE[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8); return (crc ^ 0xFFFFFFFF) >>> 0; }
+function u16(v) { return [v & 0xff, (v >> 8) & 0xff]; }
+function u32(v) { return [(v >>> 0) & 0xff, (v >>> 8) & 0xff, (v >>> 16) & 0xff, (v >>> 24) & 0xff]; }
+function buildRawPacket(uid, callsign, srvUid, vendor, streamBegin, timestamp, firstFrameIndex, radpcmFrames) {
+  const n = radpcmFrames.length;
+  const header = new Uint8Array(64);
+  header.set(u16(1), 0); header.set(u32(vendor), 2); header.set(u32(uid), 6);
+  const cs = new TextEncoder().encode(callsign.toUpperCase()); header.set(cs.slice(0, 12), 10);
+  header.set(u32(streamBegin), 22); header.set(u32(timestamp), 26);
+  header.set(u32(64 + n * 344), 30); header.set(u16(n), 34);
+  header[40] = 8; header.set(u32(srvUid), 41);
+  const tfArea = new Uint8Array(n * 344);
+  for (let i = 0; i < n; i++) {
+    const tf = new Uint8Array(344);
+    tf.set(u16(i + 1), 0); tf.set(u16(344), 2); tf[8] = 2; tf.set(u16(336), 9);
+    tf.set(radpcmFrames[i], 16);
+    tfArea.set(tf, i * 344);
+  }
+  header.set(u32(crc32(tfArea)), 36);
+  return concatBytes(header, tfArea);
+}
+
+/* ================= 登录（1h 免登录） ================= */
+const LOGIN_TTL = 3600000;
+function savedLogin() { try { return JSON.parse(localStorage.getItem('fmo_login_v2') || 'null'); } catch (e) { return null; } }
+function isLoggedIn() { const s = savedLogin(); return !!(s && s.callsign && (Date.now() - s.loginAt) < LOGIN_TTL); }
+function saveLogin(callsign) { try { localStorage.setItem('fmo_login_v2', JSON.stringify({ callsign, loginAt: Date.now() })); } catch (e) {} }
+function currentCallsign() { const s = savedLogin(); return s ? s.callsign : ''; }
+
+/* ================= 发送身份 ================= */
+function getDeviceId() {
+  try {
+    let d = localStorage.getItem('fmo_device_id');
+    if (!d) { d = 'dev-' + Math.random().toString(36).slice(2, 12); localStorage.setItem('fmo_device_id', d); }
+    return d;
+  } catch (e) { return 'dev-' + Math.random().toString(36).slice(2, 12); }
+}
+function deviceLabel() {
+  try {
+    const ua = navigator.userAgent || '';
+    let b = '浏览器';
+    if (/Edg\//.test(ua)) b = 'Edge';
+    else if (/OPR\//.test(ua) || /Opera/.test(ua)) b = 'Opera';
+    else if (/Firefox\//.test(ua)) b = 'Firefox';
+    else if (/Chrome\//.test(ua)) b = 'Chrome';
+    else if (/Safari\//.test(ua)) b = 'Safari';
+    let os = '';
+    if (/Windows/.test(ua)) os = 'Windows';
+    else if (/Android/.test(ua)) os = 'Android';
+    else if (/iPhone|iPad|iPod/.test(ua)) os = 'iOS';
+    else if (/Macintosh/.test(ua)) os = 'macOS';
+    else if (/Linux/.test(ua)) os = 'Linux';
+    return b + (os ? ' · ' + os : '');
+  } catch (e) { return ''; }
+}
+function savedIdentity() { try { const id = JSON.parse(localStorage.getItem('fmo_identity_v2') || 'null'); return (id && id.uid && id.deviceId === getDeviceId()) ? id : null; } catch (e) { return null; } }
+function saveIdentity(id) { try { if (id) id.deviceId = getDeviceId(); localStorage.setItem('fmo_identity_v2', JSON.stringify(id)); } catch (e) {} }
+
+/* ================= 登录门（服务端校验） ================= */
+let loginType = 'callsign';
+function setLoginType(t) {
+  loginType = t;
+  document.querySelectorAll('.login-type-btn').forEach(b => {
+    const on = b.dataset.type === t;
+    b.classList.toggle('on', on);
+    b.style.background = on ? 'var(--accent)' : 'transparent';
+    b.style.color = on ? 'var(--accent-text)' : 'var(--text-muted)';
+  });
+  if (t === 'web') {
+    $('loginCallsignLabel').textContent = '用户名（自动加 WEB- 前缀）';
+    $('loginCallsign').placeholder = '如 abc123（登录为 WEB-ABC123）';
+    $('loginSecretLabel').textContent = '密码';
+    $('loginSecret').placeholder = '密码';
+    $('loginSub').textContent = '普通用户登录（需管理员审核通过）';
+  } else {
+    $('loginCallsignLabel').textContent = '呼号 Callsign';
+    $('loginCallsign').placeholder = '如 BA7ABC';
+    $('loginSecretLabel').textContent = '密码 / APRS Passcode';
+    $('loginSecret').placeholder = '密码 / passcode';
+    $('loginSub').textContent = '首次用 APRS passcode 登录 · 开通发送后改用密码';
+  }
+}
+document.querySelectorAll('.login-type-btn').forEach(b => b.addEventListener('click', () => setLoginType(b.dataset.type)));
+$('loginBtn').addEventListener('click', async () => {
+  let cs = $('loginCallsign').value.trim().toUpperCase();
+  const secret = $('loginSecret').value.trim();
+  if (!cs) { $('loginErr').textContent = loginType === 'web' ? '请输入用户名' : '请输入呼号'; return; }
+  if (!secret) { $('loginErr').textContent = '请输入密码/passcode'; return; }
+  if (loginType === 'web' && !cs.startsWith('WEB-')) cs = 'WEB-' + cs;
+  $('loginBtn').disabled = true;
+  try {
+    const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callsign: cs, secret, device_id: getDeviceId(), device_name: deviceLabel(), user_agent: navigator.userAgent }) });
+    const data = await r.json();
+    if (!r.ok) { $('loginErr').textContent = data.error || '登录失败'; return; }
+    $('loginErr').textContent = '';
+    saveLogin(data.callsign);
+    if (data.identity) saveIdentity(data.identity);
+    if (data.tier) { try { localStorage.setItem('fmo_tier', data.tier); } catch (e) {} }
+    try { localStorage.setItem('fmo_muted', data.muted ? '1' : '0'); } catch (e) {}
+    applyPttStyle(data.ptt_style || 'round', false);
+    enterApp();
+  } catch (e) { $('loginErr').textContent = '登录失败: ' + e.message; }
+  finally { $('loginBtn').disabled = false; }
+});
+
+/* 注册普通用户 */
+$('registerLink').addEventListener('click', () => { $('loginGate').classList.add('hidden'); $('regGate').classList.remove('hidden'); });
+$('regBackBtn').addEventListener('click', () => { $('regGate').classList.add('hidden'); $('loginGate').classList.remove('hidden'); });
+$('regBtn').addEventListener('click', async () => {
+  const username = $('regUsername').value.trim();
+  const password = $('regPassword').value;
+  const email = $('regEmail').value.trim();
+  if (!username) { $('regErr').textContent = '请输入用户名'; return; }
+  if (!validPassword(password)) { $('regErr').textContent = '密码至少 6 位，需包含大写字母、小写字母和数字'; return; }
+  if (!email || email.indexOf('@') < 0) { $('regErr').textContent = '请输入有效邮箱'; return; }
+  $('regBtn').disabled = true;
+  try {
+    const r = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password, email }) });
+    const data = await r.json();
+    if (!r.ok) { $('regErr').textContent = data.error || '注册失败'; return; }
+    $('regErr').textContent = '';
+    showAlert('注册成功', data.message || '注册成功，请等待管理员审核');
+    $('regGate').classList.add('hidden');
+    $('loginGate').classList.remove('hidden');
+  } catch (e) { $('regErr').textContent = '注册失败: ' + e.message; }
+  finally { $('regBtn').disabled = false; }
+});
+
+/* 强制设密码 */
+function validPassword(p) { return p.length >= 6 && /[A-Z]/.test(p) && /[a-z]/.test(p) && /[0-9]/.test(p); }
+$('pwBtn').addEventListener('click', async () => {
+  const callsign = $('pwCallsign').value.trim().toUpperCase();
+  const p1 = $('pwPassword').value;
+  const p2 = $('pwPassword2').value;
+  if (!validPassword(p1)) { $('pwErr').textContent = '密码至少 6 位，需包含大写字母、小写字母和数字'; return; }
+  if (p1 !== p2) { $('pwErr').textContent = '两次密码不一致'; return; }
+  $('pwBtn').disabled = true;
+  try {
+    const r = await fetch('/api/set-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callsign, password: p1 }) });
+    const data = await r.json();
+    if (!r.ok) { $('pwErr').textContent = data.error || '设置失败'; return; }
+    saveLogin(callsign);
+    try { localStorage.setItem('fmo_tier', 'full'); } catch (e) {}
+    $('pwGate').classList.add('hidden');
+    enterApp();
+  } catch (e) { $('pwErr').textContent = '设置失败: ' + e.message; }
+  finally { $('pwBtn').disabled = false; }
+});
+
+/* 忘记密码 */
+function forgotPassword() {
+  showPrompt('忘记密码', '输入呼号', '', async (cs) => {
+    if (!cs) return;
+    const callsign = cs.trim().toUpperCase();
+    showLoading('正在发送重置邮件，约需 20 秒，请勿关闭…');
+    try {
+      const r = await fetch('/api/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callsign }) });
+      const data = await r.json();
+      closeDialog();
+      if (!r.ok) {
+        let msg = data.error || ('HTTP ' + r.status);
+        if (data.admin_wechat || data.admin_phone) msg += '\n管理员微信：' + (data.admin_wechat || '—') + '\n管理员手机：' + (data.admin_phone || '—');
+        showAlert('找回失败', msg);
+        return;
+      }
+      showPrompt('输入验证码', '已发送到邮箱的验证码', '', (token) => {
+        if (!token) return;
+        showPrompt('设置新密码', '新密码（大写+小写+数字，≥6 位）', '', async (pwd) => {
+          if (!pwd) return;
+          if (!validPassword(pwd)) { showAlert('密码不符合要求', '密码至少 6 位，需包含大写字母、小写字母和数字'); return; }
+          try {
+            const r2 = await fetch('/api/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callsign, token: token.trim(), password: pwd }) });
+            const d2 = await r2.json();
+            if (!r2.ok) { showAlert('重置失败', d2.error || ('HTTP ' + r2.status)); return; }
+            showAlert('成功', '密码已重置，请用新密码登录');
+          } catch (e2) { showAlert('重置失败', e2.message); }
+        });
+      });
+    } catch (e) { showAlert('找回失败', e.message); }
+  });
+}
+$('forgotPwLink').addEventListener('click', forgotPassword);
+
+/* 输入框回车触发对应按钮 */
+[['loginCallsign', 'loginBtn'], ['loginSecret', 'loginBtn']].forEach(([inputId, btnId]) => {
+  $(inputId).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $(btnId).click(); } });
+});
+[['pwPassword', 'pwBtn'], ['pwPassword2', 'pwBtn']].forEach(([inputId, btnId]) => {
+  $(inputId).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $(btnId).click(); } });
+});
+[['pwNew1', 'changePwBtn'], ['pwNew2', 'changePwBtn']].forEach(([inputId, btnId]) => {
+  $(inputId).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $(btnId).click(); } });
+});
+
+function enterApp() {
+  $('loginGate').classList.add('hidden');
+  $('main').classList.remove('hidden');
+  syncHeaderH();
+  loadPlayedLocal(currentCallsign());
+  $('issCallsign').value = currentCallsign();
+  updatePttState();
+  syncRigProfileFromServer();
+  loadList(true);
+  showVoiceAuth();
+  syncPlayed();
+}
+
+/* 登出 */
+$('logoutBtn').addEventListener('click', logout);
+function logout() {
+  if (mqttClient) { try { mqttClient.end(true); } catch (e) {} mqttClient = null; }
+  if (lateTimer) { clearInterval(lateTimer); lateTimer = null; }
+  if (teleTimer) { clearInterval(teleTimer); teleTimer = null; }
+  localStorage.removeItem('fmo_login');
+  localStorage.removeItem('fmo_identity_v2');
+  localStorage.removeItem('fmo_login_v2');
+  localStorage.removeItem('fmo_identity_v2');
+  localStorage.removeItem('fmo_tier');
+  identity = null;
+  $('main').classList.add('hidden');
+  $('loginGate').classList.remove('hidden');
+  $('loginSecret').value = '';
+  $('loginErr').textContent = '';
+  $('loginCallsign').value = '';
+}
+
+/* ================= 语音记录（沿用原逻辑） ================= */
+const listEl = $('list'), mask = $('mask'), popup = $('popup'), player = $('player');
+const AVATAR_COLORS = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e','#d35400','#27ae60','#2980b9','#8e44ad','#16a085','#c0392b'];
+function avatarColor(cs) { let h = 0; const s = (cs || '?').toUpperCase(); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return AVATAR_COLORS[h % AVATAR_COLORS.length]; }
+function avatarHtml(callsign) {
+  const cs = callsign || '';
+  return '<div class="avatar" data-callsign="' + cs + '" style="background:' + avatarColor(cs) + '"><span>' + (cs[0] || '?') + '</span><img class="avatar-img" src="/api/avatar/' + encodeURIComponent(cs) + '" onerror="this.remove()"></div>';
+}
+const THEMES = ['fmo', 'green', 'light', 'blue', 'purple', 'rose', 'sunset'];
+let themeIdx = 0; try { themeIdx = Math.max(0, THEMES.indexOf(localStorage.getItem('fmo_theme'))); } catch (e) {}
+function applyTheme() { document.documentElement.setAttribute('data-theme', THEMES[themeIdx]); try { localStorage.setItem('fmo_theme', THEMES[themeIdx]); } catch (e) {} $('themeBtn').title = '主题：' + THEMES[themeIdx] + '（点击切换）'; }
+applyTheme();
+$('themeBtn').addEventListener('click', () => { themeIdx = (themeIdx + 1) % THEMES.length; applyTheme(); });
+const searchEl = $('search'); let searchTerm = '';
+searchEl.addEventListener('input', () => { searchTerm = searchEl.value.trim().toUpperCase(); loadList(true); });
+let currentStream = null, listKey = null, firstLoad = true, lastNewestStream = null, liveStream = null, playedFrames = 0, latestFrames = 0, prefetched = null;
+let listPage = 1, listSize = 30, loadingMore = false, hasMore = true;
+let autoPlay = false;
+function fmtObj(jsonStr) {
+  if (!jsonStr) return '—';
+  try { const o = JSON.parse(jsonStr); return Object.entries(o).map(([k, v]) => k + ': ' + v).join(' · '); } catch (e) { return jsonStr; }
+}
+function prefetchLive() {
+  if (!liveStream) return; const start = playedFrames;
+  fetch('/api/voice/' + liveStream + '/audio.wav').then(r => r.blob()).then(blob => {
+    if (liveStream && playedFrames === start) { if (prefetched) URL.revokeObjectURL(prefetched.url); prefetched = { url: URL.createObjectURL(blob), start }; }
+  }).catch(() => {});
+}
+function playLive(startFrame) {
+  if (!liveStream) return;
+  const usePrefetch = prefetched && prefetched.start === startFrame;
+  const src = usePrefetch ? prefetched.url : ('/api/voice/' + liveStream + '/audio.wav');
+  if (usePrefetch) prefetched = null;
+  player.src = src;
+  player.onloadedmetadata = () => { if (startFrame > 0) player.currentTime = startFrame * 0.08; player.play().catch(() => {}); document.querySelectorAll('.play-btn').forEach(b => { b.textContent = '▶'; b.classList.remove('playing'); }); const btn = listEl.querySelector('.play-btn[data-stream="' + liveStream + '"]'); if (btn) { btn.textContent = '❚❚'; btn.classList.add('playing'); } };
+  player.onended = () => { if (liveStream && latestFrames > playedFrames) { playLive(playedFrames); } else { const btn = listEl.querySelector('.play-btn[data-stream="' + liveStream + '"]'); if (btn) { btn.textContent = '▶'; btn.classList.remove('playing'); } currentStream = null; } };
+  playedFrames = latestFrames; currentStream = liveStream;
+}
+function ageMin(item) {
+  if (!item.start_time) return 0;
+  return (Date.now() - new Date(item.start_time.replace(' ', 'T')).getTime()) / 60000;
+}
+function renderVoiceCard(item) {
+  const card = document.createElement('div'); card.className = 'voice-card';
+  const isOwn = item.callsign === currentCallsign();   // 自己发出的语音不算未读
+  const unread = !isOwn && !isPlayed(item.stream_id);
+  if (unread) card.classList.add('unread');
+  const dur = item.duration_ms >= 1000 ? (item.duration_ms / 1000).toFixed(1) + '秒' : item.duration_ms + 'ms';
+  card.innerHTML = avatarHtml(item.callsign) + '<div class="voice-info"><div class="voice-callsign">' + item.callsign + (item.uid != null ? ' <span style="font-size:11px;color:var(--text-muted);font-weight:400;">UID ' + item.uid + '</span>' : '') + (unread ? '<span class="unread-badge">未读</span>' : '') + '</div><div class="voice-meta"><span>' + (item.start_time || '') + '</span><span class="meta-dur">' + dur + '</span></div></div><button class="play-btn" data-stream="' + item.stream_id + '">▶</button>';
+  card.querySelector('.voice-callsign').addEventListener('click', (e) => { e.stopPropagation(); showAprs(item.callsign); });
+  card.querySelector('.voice-info').addEventListener('click', () => showDetail(item.callsign, item.start_time));
+  card.querySelector('.avatar').addEventListener('click', () => showDetail(item.callsign, item.start_time));
+  card.querySelector('.play-btn').addEventListener('click', (e) => { e.stopPropagation(); togglePlay(item.stream_id, e.currentTarget); });
+  return card;
+}
+/* 展开/收起动画（max-height 过渡，能明显看到展开与收起） */
+function toggleDetail(el, show) {
+  if (!el) return;
+  if ((el.getAttribute('data-open') === '1') === show) return;
+  el.setAttribute('data-open', show ? '1' : '0');
+  el.style.overflow = 'hidden';
+  if (show) {
+    el.style.display = 'block';
+    el.style.maxHeight = '0px';
+    void el.offsetHeight;
+    el.style.transition = 'max-height .28s ease';
+    el.style.maxHeight = el.scrollHeight + 'px';
+  } else {
+    el.style.maxHeight = el.scrollHeight + 'px';
+    void el.offsetHeight;
+    el.style.transition = 'max-height .24s ease';
+    el.style.maxHeight = '0px';
+  }
+  clearTimeout(el._toggleT);
+  el._toggleT = setTimeout(() => {
+    el.style.transition = '';
+    if (show) { el.style.maxHeight = 'none'; el.style.overflow = 'visible'; }
+    else { el.style.display = 'none'; el.style.maxHeight = ''; el.style.overflow = ''; }
+  }, 320);
+}
+
+function renderItems(items) {
+  console.log('[renderItems] 收到', items.length, '条:', items.map(i => (i.type || '单条') + ':' + i.callsign).join(','));
+  for (const item of items) {
+    if (item.type === 'group') {
+      const dur = item.total_duration_ms >= 1000 ? (item.total_duration_ms / 1000).toFixed(1) + '秒' : item.total_duration_ms + 'ms';
+      const wrap = document.createElement('div');
+      const grp = document.createElement('div'); grp.className = 'voice-card group-card'; grp.style.cursor = 'pointer';
+      grp.innerHTML = avatarHtml(item.callsign) + '<div class="voice-info"><div class="voice-callsign">' + item.callsign + (item.uid != null ? ' <span style="font-size:11px;color:var(--text-muted);font-weight:400;">UID ' + item.uid + '</span>' : '') + ' <span class="grp-count" style="font-size:11px;color:var(--accent);">' + item.group_count + ' 条</span></div><div class="voice-meta"><span>' + (item.end_time || '') + ' ~ ' + (item.start_time || '') + '</span><span class="meta-dur grp-dur">' + dur + '</span></div></div><button class="group-toggle" style="width:36px;height:36px;border-radius:50%;background:var(--accent);border:none;color:var(--accent-text);font-size:14px;cursor:pointer;flex-shrink:0;">⌄</button>';
+      const detail = document.createElement('div');
+      detail.style.display = 'none';
+      grp.addEventListener('click', () => {
+        const willShow = detail.getAttribute('data-open') !== '1';
+        if (willShow && detail.getAttribute('data-loaded') !== '1') {
+          detail.setAttribute('data-loaded', '1');   // 先标记，避免重复请求
+          fetch('/api/voice/group-streams?callsign=' + encodeURIComponent(item.callsign) + '&user=' + encodeURIComponent(currentCallsign()))
+            .then(r => r.json()).then(d => { (d.items || []).forEach(s => detail.appendChild(renderVoiceCard(s))); })
+            .catch(() => {});
+        }
+        toggleDetail(detail, willShow);
+        const tg = grp.querySelector('.group-toggle');
+        if (tg) tg.textContent = willShow ? '⌃' : '⌄';
+      });
+      wrap.appendChild(grp);
+      wrap.appendChild(detail);
+      listEl.appendChild(wrap);
+    } else {
+      listEl.appendChild(renderVoiceCard(item));
+    }
+  }
+}
+async function loadList(force) {
+  try {
+    listPage = 1; hasMore = true;
+    const r = await fetch('/api/voice/list?size=' + listSize + '&page=1' + (searchTerm ? '&callsign=' + encodeURIComponent(searchTerm) : '') + '&user=' + encodeURIComponent(currentCallsign()));
+    const data = await r.json();
+    if (!data.items) throw new Error('bad response');
+    const key = data.items.map(i => i.type === 'group' ? ('G:' + i.callsign + ':' + i.group_count) : ('S:' + i.stream_id + ':' + i.frame_count)).join('|');
+    const changed = force || key !== listKey;
+    const newest = data.items.length ? data.items[0].stream_id : null;
+    const newestFrames = data.items.length ? data.items[0].frame_count : 0;
+    if (newest !== null && newest !== lastNewestStream) {
+      if (autoPlay && lastNewestStream !== null) { liveStream = newest; latestFrames = newestFrames; playLive(0); }
+      lastNewestStream = newest;
+    } else if (newest !== null && newest === liveStream) {
+      if (newestFrames > latestFrames) { latestFrames = newestFrames; if (!player.paused) prefetchLive(); }
+      if (player.paused && latestFrames > playedFrames) playLive(playedFrames);
+    }
+    if (!changed) return;
+    listKey = key;
+    if (data.items.length === 0) { listEl.innerHTML = '<div class="empty">暂无语音记录</div>'; return; }
+    listEl.innerHTML = '';
+    renderItems(data.items);
+    hasMore = !!data.has_more;
+    if (currentStream != null) { const btn = listEl.querySelector('.play-btn[data-stream="' + currentStream + '"]'); if (btn) { btn.textContent = '❚❚'; btn.classList.add('playing'); } }
+  } catch (err) { if (firstLoad) listEl.innerHTML = '<div class="empty">加载失败: ' + err + '</div>'; }
+  firstLoad = false;
+}
+async function loadMore() {
+  if (loadingMore || !hasMore || firstLoad) return;
+  loadingMore = true;
+  try {
+    const page = listPage + 1;
+    console.log('[loadMore] 请求 page', page, 'hasMore', hasMore);
+    const r = await fetch('/api/voice/list?size=' + listSize + '&page=' + page + (searchTerm ? '&callsign=' + encodeURIComponent(searchTerm) : '') + '&user=' + encodeURIComponent(currentCallsign()));
+    const data = await r.json();
+    console.log('[loadMore] page', page, '返回', (data.items || []).length, '条, has_more=', data.has_more);
+    if (!data.items || data.items.length === 0) { hasMore = false; return; }
+    listPage = page;
+    renderItems(data.items);
+    hasMore = !!data.has_more;
+  } catch (e) { console.log('[loadMore] 异常', e); }
+  finally { loadingMore = false; }
+}
+window.addEventListener('scroll', () => {
+  if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 400) loadMore();
+});
+function togglePlay(streamId, btn, silent) {
+  if (isListenOnly()) { showGoVerify(); return; }
+  liveStream = null;
+  if (currentStream === streamId && !player.paused) { player.pause(); btn.textContent = '▶'; btn.classList.remove('playing'); currentStream = null; return; }
+  document.querySelectorAll('.play-btn').forEach(b => { b.textContent = '▶'; b.classList.remove('playing'); });
+  markPlayed(streamId);
+  if (btn.closest('.voice-card')) markCardRead(btn.closest('.voice-card'));
+  player.src = '/api/voice/' + streamId + '/audio.wav';
+  player.play().then(() => { btn.textContent = '❚❚'; btn.classList.add('playing'); currentStream = streamId; }).catch(err => { if (!silent) showAlert('播放失败', String(err)); });
+  player.onended = () => { btn.textContent = '▶'; btn.classList.remove('playing'); currentStream = null; playNextUnreadAfter(streamId); };
+}
+async function showDetail(callsign, t) {
+  popup.innerHTML = '<div class="empty">加载中...</div>'; mask.classList.add('show');
+  try {
+    const r = await fetch('/api/user/' + encodeURIComponent(callsign) + (t ? '?t=' + encodeURIComponent(t) : ''));
+    const u = await r.json();
+    const rows = [['呼号', u.callsign], ['UID', u.uid ?? '—'], ['网格坐标', u.grid ?? '—'], ['频率', u.freq_mhz ? u.freq_mhz + ' MHz' : '—'], ['设备型号', u.rig_model ?? '—'], ['状态/备注', u.status ?? '—'], ['APRS SSID', u.ssid != null ? '-' + u.ssid : '—'], ['经纬度', (u.lat != null && u.lon != null) ? u.lat.toFixed(4) + ', ' + u.lon.toFixed(4) : '—'], ['集群', u.cluster ?? '—'], ['服务器', u.server_url ?? '—'], ['APRS 状态', u.aprs_status ?? '—'], ['服务器描述', u.description ?? '—'], ['语音条数', u.voice_count ?? 0], ['通联次数', u.qso_count ?? 0], ['首次出现', u.first_seen ?? '—'], ['最后活动', u.last_seen ?? '—'], ['遥测数据', fmtObj(u.telemetry)], ['设备配置', fmtObj(u.profile)]];
+    popup.innerHTML = '<div class="popup-header">' + avatarHtml(u.callsign) + '<div class="name">' + u.callsign + '</div><div class="uid">UID ' + (u.uid ?? '—') + '</div></div><div class="popup-body">' + rows.map(([k, v]) => '<div class="detail-row"><div class="detail-label">' + k + '</div><div class="detail-value">' + v + '</div></div>').join('') + '</div><div class="popup-footer"><button class="close-btn" onclick="closePopup()">关闭</button></div>';
+  } catch (err) { popup.innerHTML = '<div class="empty">加载失败: ' + err + '</div>'; }
+}
+function closePopup() { mask.classList.remove('show'); }
+mask.addEventListener('click', (e) => { if (e.target === mask) closePopup(); });
+const aprsMask = $('aprsMask'), aprsPopup = $('aprsPopup');
+function closeAprs() { aprsMask.classList.remove('show'); }
+aprsMask.addEventListener('click', (e) => { if (e.target === aprsMask) closeAprs(); });
+function showAprs(callsign) {
+  aprsPopup.innerHTML = '<div class="empty">加载中...</div>'; aprsMask.classList.add('show');
+  fetch('/api/aprs/' + encodeURIComponent(callsign)).then(r => r.json()).then(data => {
+    const devices = data.devices || [];
+    if (devices.length === 0) { aprsPopup.innerHTML = '<div class="popup-header"><div class="name">' + callsign + '</div></div><div class="empty">暂无 APRS 数据</div><button class="close-btn" onclick="closeAprs()">关闭</button>'; return; }
+    let html = '<div class="popup-header">' + avatarHtml(callsign) + '<div class="name">' + callsign + '</div><div class="uid">' + devices.length + ' 台设备</div></div><div class="popup-body">';
+    for (let i = 0; i < devices.length; i++) {
+      const d = devices[i]; const deviceName = callsign + (d.ssid != null ? '-' + d.ssid : '');
+      const color = avatarColor(callsign + ':' + (d.ssid != null ? d.ssid : '0'));
+      html += '<div class="device-box" style="border-left-color:' + color + '"><div class="device-title" style="color:' + color + '">设备 ' + (i + 1) + ' · ' + deviceName + '</div>';
+      html += '<div class="detail-row"><div class="detail-label">SSID</div><div class="detail-value">' + (d.ssid != null ? '-' + d.ssid : '—') + '</div></div>';
+      html += '<div class="detail-row"><div class="detail-label">经纬度</div><div class="detail-value">' + ((d.lat != null && d.lon != null) ? d.lat.toFixed(4) + ', ' + d.lon.toFixed(4) : '—') + '</div></div>';
+      if (d.freq_mhz) html += '<div class="detail-row"><div class="detail-label">频率</div><div class="detail-value">' + d.freq_mhz + ' MHz</div></div>';
+      if (d.height_m) html += '<div class="detail-row"><div class="detail-label">天线高度</div><div class="detail-value">' + d.height_m + ' 米</div></div>';
+      if (d.antenna) html += '<div class="detail-row"><div class="detail-label">天线/位置</div><div class="detail-value">' + d.antenna + '</div></div>';
+      if (d.rig) html += '<div class="detail-row"><div class="detail-label">电台型号</div><div class="detail-value">' + d.rig + '</div></div>';
+      if (d.cluster) html += '<div class="detail-row"><div class="detail-label">集群</div><div class="detail-value">' + d.cluster + '</div></div>';
+      if (d.server_url) html += '<div class="detail-row"><div class="detail-label">服务器</div><div class="detail-value">' + d.server_url + '</div></div>';
+      if (d.status_text) html += '<div class="detail-row"><div class="detail-label">状态</div><div class="detail-value">' + d.status_text + '</div></div>';
+      if (d.last_time) html += '<div class="detail-row"><div class="detail-label">最后活动</div><div class="detail-value">' + d.last_time + '</div></div>';
+      html += '</div>';
+    }
+    html += '</div><div class="popup-footer"><button class="close-btn" onclick="closeAprs()">关闭</button></div>';
+    aprsPopup.innerHTML = html;
+  }).catch(err => { aprsPopup.innerHTML = '<div class="empty">加载失败: ' + err + '</div><button class="close-btn" onclick="closeAprs()">关闭</button>'; });
+}
+
+/* ================= 设置浮窗 ================= */
+const settingsMask = $('settingsMask');
+$('settingsBtn').addEventListener('click', openSettings);
+$('markAllReadBtn').addEventListener('click', () => {
+  showConfirm('全部已读', '确定把所有语音标记为已读吗？', () => {
+    listEl.querySelectorAll('.play-btn').forEach(b => playedSet.add(String(b.dataset.stream)));
+    persistPlayed();
+    listEl.querySelectorAll('.voice-card.unread').forEach(markCardRead);
+    const cs = currentCallsign();
+    if (cs) {
+      fetch('/api/played/mark-all', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callsign: cs }) }).catch(() => {});
+    }
+  });
+});
+$('settingsClose').addEventListener('click', () => { settingsMask.classList.remove('show'); stopIdentityPoll(); });
+settingsMask.addEventListener('click', (e) => { if (e.target === settingsMask) { settingsMask.classList.remove('show'); stopIdentityPoll(); } });
+
+let currentVerifiedFp = null, fpMasked = false;
+function maskFp(fp) { if (!fp || fp.length < 10) return '••••••••••••'; return fp.slice(0, 4) + '••••••••••••' + fp.slice(-4); }
+$('issFp').addEventListener('focus', () => { if (fpMasked) { $('issFp').value = ''; fpMasked = false; } });
+$('issFp').addEventListener('input', () => { fpMasked = false; currentVerifiedFp = null; });
+
+function renderIdentityPanel(data) {
+  const panel = $('identityPanel');
+
+  if (data.verified && data.verified.uid != null) {
+    $('issUid').value = data.verified.uid;
+    currentVerifiedFp = data.verified.fingerprint || null;
+    $('issFp').value = currentVerifiedFp ? maskFp(currentVerifiedFp) : '';
+    fpMasked = !!currentVerifiedFp;
+  } else {
+    currentVerifiedFp = null; fpMasked = false;
+  }
+
+  const curId = savedIdentity();
+  let html = '';
+  if (curId && curId.uid) {
+    html += '<div style="font-size:13px;margin-bottom:6px;"><span style="color:var(--green)">● 已开通发送</span></div>';
+    html += '<div class="detail-row"><div class="detail-label">本机软件 UID</div><div class="detail-value">' + curId.uid + '</div></div>';
+    html += '<div class="detail-row"><div class="detail-label">证书指纹</div><div class="detail-value" style="word-break:break-all">' + (certFingerprint(curId.userCert) || '—') + '</div></div>';
+  } else {
+    html += '<div style="font-size:13px;color:var(--text-muted);margin-bottom:6px;">○ 未开通发送</div>';
+  }
+
+  const uids = data.uids || [];
+  if (uids.length) {
+    html += '<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:10px;"><div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:8px;">该呼号的所有 UID</div>';
+    for (const u of uids) {
+      const kind = u.kind === 'software' ? '软件' : '设备';
+      const st = u.online ? '<span style="color:var(--green)">在线</span>' : '<span style="color:var(--text-muted)">离线</span>';
+      const ip = (u.clients && u.clients.length) ? u.clients.map(c => c.ip).join(', ') : (u.last_ip || '—');
+      const geo = u.ip_location ? (' · ' + u.ip_location) : '';
+      const reg = u.first_seen ? u.first_seen : '—';
+      const last = u.online ? '在线中' : (u.last_seen ? u.last_seen : '—');
+      const dname = u.device_name ? u.device_name : '—';
+      const remarkBtn = u.kind === 'software' ? '<button class="uid-remark-btn" data-uid="' + u.uid + '" data-remark="' + escHtml(u.remark || '') + '" style="padding:2px 8px;border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:6px;font-size:12px;cursor:pointer;margin-right:6px;">备注</button>' : '';
+      const delBtn = u.kind === 'software' ? '<button class="uid-del-btn" data-uid="' + u.uid + '" data-online="' + (u.online ? 1 : 0) + '" style="padding:2px 8px;border:1px solid var(--red);background:transparent;color:var(--red);border-radius:6px;font-size:12px;cursor:pointer;">删除</button>' : '';
+      html += '<div class="uid-row" style="padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;">';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">';
+      html += '<span style="font-size:14px;">UID ' + u.uid + ' · ' + kind + ' · ' + st + (u.remark ? ' <span style="color:var(--text-muted);font-size:12px;">' + escHtml(u.remark) + '</span>' : '') + '</span>';
+      html += '<span>' + remarkBtn + delBtn + '</span>';
+      html += '</div>';
+      html += '<div class="uid-detail" style="display:none;font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.6;">设备 ' + dname + '<br>IP ' + ip + geo + '<br>注册 ' + reg + ' · 最后在线 ' + last + (u.remark ? '<br>备注 ' + escHtml(u.remark) : '') + (u.user_agent ? '<br>UA ' + u.user_agent : '') + '</div>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  panel.innerHTML = html;
+  panel.querySelectorAll('.uid-del-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); deleteUid(parseInt(btn.dataset.uid, 10), btn.dataset.online === '1'); });
+  });
+  panel.querySelectorAll('.uid-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const d = row.querySelector('.uid-detail');
+      if (d) toggleDetail(d, d.getAttribute('data-open') !== '1');
+    });
+  });
+  panel.querySelectorAll('.uid-remark-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const uid = parseInt(btn.dataset.uid, 10);
+      showPrompt('设置备注', '输入备注（留空清除）', btn.dataset.remark || '', async (v) => {
+        try {
+          const r = await fetch('/api/uid/remark', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callsign: currentCallsign(), uid, remark: v }) });
+          const data = await r.json();
+          if (!r.ok) { showAlert('备注失败', data.error || ('HTTP ' + r.status)); return; }
+          loadIdentityPanel();
+        } catch (e2) { showAlert('备注失败', e2.message); }
+      });
+    });
+  });
+}
+
+/* 设置页身份状态实时轮询（每 10s 刷新在线状态；用户正在编辑三元组时不打断） */
+let identityPollTimer = null;
+function startIdentityPoll() {
+  stopIdentityPoll();
+  identityPollTimer = setInterval(() => {
+    if (!settingsMask.classList.contains('show')) return;
+    const a = document.activeElement;
+    if (a && (a.id === 'issUid' || a.id === 'issFp' || a.id === 'issCallsign')) return;
+    loadIdentityPanel();
+  }, 1000);
+}
+function stopIdentityPoll() {
+  if (identityPollTimer) { clearInterval(identityPollTimer); identityPollTimer = null; }
+}
+
+let identitySig = '';
+async function loadIdentityPanel() {
+  const callsign = currentCallsign();
+  $('issCallsign').value = callsign;
+  const panel = $('identityPanel');
+  let hasCache = false;
+  try {
+    const cached = JSON.parse(localStorage.getItem('fmo_identity_cache') || 'null');
+    if (cached && cached.callsign === callsign && cached.uids) { renderIdentityPanel(cached); hasCache = true; }
+  } catch (e) {}
+  if (!hasCache) panel.innerHTML = '<div style="font-size:12px;color:var(--text-muted)">加载身份...</div>';
+  try {
+    const r = await fetch('/api/identity/status?callsign=' + encodeURIComponent(callsign));
+    const data = await r.json();
+    try { localStorage.setItem('fmo_identity_cache', JSON.stringify(data)); } catch (e) {}
+    const sig = callsign + '|' + JSON.stringify(data.uids || []);
+    if (sig === identitySig && hasCache) return;
+    identitySig = sig;
+    renderIdentityPanel(data);
+  } catch (e) {
+    if (!hasCache) panel.innerHTML = '<div style="font-size:12px;color:var(--red)">加载失败: ' + e.message + '</div>';
+  }
+}
+
+function deleteUid(uid, online) {
+  const msg = online
+    ? 'UID ' + uid + ' 当前在线，将先踢下线再删除。确定删除？'
+    : '确定删除软件 UID ' + uid + '？删除后该 UID 会释放，可被其它设备使用。';
+  showConfirm('删除软件 UID', msg, async () => {
+    try {
+      const r = await fetch('/api/uid/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callsign: currentCallsign(), uid }) });
+      const data = await r.json();
+      if (!r.ok) { showAlert('删除失败', data.error || ('HTTP ' + r.status)); return; }
+      const cur = savedIdentity();
+      if (cur && cur.uid === uid) {
+        localStorage.removeItem('fmo_identity_v2');
+        identity = null;
+        if (mqttClient) { try { mqttClient.end(true); } catch (e) {} mqttClient = null; }
+      }
+      loadIdentityPanel();
+      updatePttState();
+      showAlert('已删除', 'UID ' + uid + ' 已删除并释放。');
+    } catch (e) { showAlert('删除失败', e.message); }
+  });
+}
+
+$('issueBtn').addEventListener('click', async () => {
+  const callsign = $('issCallsign').value.trim().toUpperCase();
+  const uid = parseInt($('issUid').value, 10);
+  const fp = fpMasked ? currentVerifiedFp : $('issFp').value.trim();
+  $('issueErr').textContent = '';
+  if (!callsign || !fp || isNaN(uid)) { $('issueErr').textContent = '请完整填写 呼号 / UID / 证书指纹'; return; }
+  $('issueBtn').disabled = true;
+  try {
+    const r = await fetch('/api/issue', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callsign, uid, fingerprint: fp, device_id: getDeviceId(), device_name: deviceLabel(), user_agent: navigator.userAgent }) });
+    const data = await r.json();
+    if (!r.ok) { $('issueErr').textContent = '核验失败：' + (data.error || r.status); return; }
+    saveIdentity(data);
+    $('issueErr').textContent = '';
+    if (data.needPassword) {
+      $('pwCallsign').value = callsign;
+      $('pwGate').classList.remove('hidden');
+    }
+    loadIdentityPanel();
+    updatePttState();
+    showAlert('✅ 开通成功', '软件 UID: ' + data.uid + '\n证书指纹: ' + certFingerprint(data.userCert));
+  } catch (e) { $('issueErr').textContent = '发证请求失败: ' + e.message; }
+  finally { $('issueBtn').disabled = false; }
+});
+
+/* 修改密码 */
+$('changePwBtn').addEventListener('click', async () => {
+  const callsign = currentCallsign();
+  const oldP = $('pwOld').value;
+  const p1 = $('pwNew1').value;
+  const p2 = $('pwNew2').value;
+  $('changePwErr').textContent = '';
+  if (!validPassword(p1)) { $('changePwErr').textContent = '密码至少 6 位，需包含大写字母、小写字母和数字'; return; }
+  if (p1 !== p2) { $('changePwErr').textContent = '两次密码不一致'; return; }
+  $('changePwBtn').disabled = true;
+  try {
+    const r = await fetch('/api/set-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callsign, password: p1, old_password: oldP }) });
+    const data = await r.json();
+    if (!r.ok) { $('changePwErr').textContent = data.error || '修改失败'; return; }
+    $('pwOld').value = ''; $('pwNew1').value = ''; $('pwNew2').value = '';
+    showAlert('修改密码', '密码已修改');
+  } catch (e) { $('changePwErr').textContent = '修改失败: ' + e.message; }
+  finally { $('changePwBtn').disabled = false; }
+});
+
+/* ================= 底部发送栏 + MQTT + PTT ================= */
+let mqttClient = null;
+let identity = null;
+let txState = null, txStreamBegin = 0, txFrameIndex = 0, txFrameBuf = [];
+let rxState = { predictor: 0, stepIndex: 0 };
+let rxStatusTimer = null;
+let audioCtx = null, scriptNode = null, micStream = null;
+let masterGain = null, muted = false;
+let pcmBuf = new Int16Array(0);
+let pcmBuf8 = [];                  // RADPCM 8kHz 缓冲（pcmBuf 已是 8kHz，直接累积）
+let rxQueue = [], rxPlaying = false;
+let rxStuckTimer = null;
+let rxOpusTs = 0;   // OPUS 解码时间戳（单调递增，避免一包多帧时间戳重复被解码器丢弃）
+let micLevel = 0, micLevelShownAt = 0;
+const SAMPLE_RATE = 8000;
+
+function updatePttState() {
+  identity = savedIdentity();
+  const btn = $('pttBtn');
+  if (!identity || !identity.uid) {
+    btn.classList.add('off'); btn.classList.remove('tx');
+    btn.innerHTML = '未开通<br>说话';
+    setStatus('未开通发送 · 点右上 ⚙️ 设置', false);
+  } else if (isMuted()) {
+    btn.classList.add('off'); btn.classList.remove('tx');
+    btn.innerHTML = '已禁言<br>仅收听';
+    setStatus('已被禁言 · 仅可收听 · ' + identity.callsign, false);
+    connectMqtt();
+  } else {
+    btn.classList.remove('off');
+    btn.innerHTML = '按住<br>说话';
+    setStatus('已开通 · 呼号 ' + identity.callsign + ' · UID ' + identity.uid, false);
+    connectMqtt();
+  }
+}
+function setStatus(text, on) {
+  $('bbStatusText').textContent = text;
+  $('bbStatus').querySelector('.dot').className = 'dot' + (on ? ' on' : '');
+}
+
+function mqttWsUrl() {
+  // 页面 HTTPS 时走同源反代 /mqtt（避免 insecure WS）；否则直连 EMQX WS
+  if (location.protocol === 'https:') return 'wss://' + location.host + '/mqtt';
+  return 'ws://' + (identity.server && identity.server.mqttHost) + ':8083/mqtt';
+}
+function connectMqtt() {
+  if (mqttClient) return;   // 已连接
+  const password = buildPassword(identity.interCert, identity.userCert, b64urlDecode(identity.privateSeed), identity.server);
+  // 固定 clientid（无随机后缀）：EMQX 同名 clientid 新连接会顶掉旧连接，
+  // 保证同一 UID 同一时刻只有一个连接，避免触发 FAS「UID 重复登录」永久拉黑。
+  const clientId = 'FMO-' + identity.callsign + '-' + identity.uid + '-web';
+  const url = mqttWsUrl();
+  setStatus('连接中 ' + url + ' ...', false);
+  mqttClient = mqtt.connect(url, { username: identity.callsign, password: password, clientId: clientId, reconnectPeriod: 500, connectTimeout: 4000, keepalive: 20 });
+  mqttClient.on('connect', () => { setStatus('已连接 · ' + identity.callsign + ' · UID ' + identity.uid, true); mqttClient.subscribe('FMO/RAW', { qos: 0 }); mqttClient.subscribe('FMO/USER_RIG', { qos: 0 }); mqttClient.subscribe('FMO/LATE/UID_V1/' + identity.uid, { qos: 0 }); mqttClient.subscribe('FMO/TELE', { qos: 0 }); mqttClient.subscribe('FMO/PROFILE', { qos: 0 }); initLibOpus(); sendProfileOnce(); sendLate(); if (lateTimer) clearInterval(lateTimer); lateTimer = setInterval(sendLate, 30000); if (teleTimer) clearInterval(teleTimer); teleTimer = setInterval(sendTele, 60000); if (onlineRefreshTimer) clearInterval(onlineRefreshTimer); onlineRefreshTimer = setInterval(updateOnlineCount, 1000); });
+  mqttClient.on('message', (topic, payload) => { if (topic === 'FMO/RAW') onRaw(new Uint8Array(payload)); else if (topic === 'FMO/USER_RIG') onUserRig(new Uint8Array(payload)); else if (topic.indexOf('FMO/LATE/') === 0) onLate(); else if (topic === 'FMO/TELE') onTele(new Uint8Array(payload)); else if (topic === 'FMO/PROFILE') onProfile(new Uint8Array(payload)); });
+  mqttClient.on('error', (e) => setStatus('连接错误: ' + e.message, false));
+  mqttClient.on('close', () => setStatus('连接断开 · 自动重连中…', false));
+  mqttClient.on('reconnect', () => setStatus('重连中 ' + url + ' ...', false));
+}
+/* 连接看门狗：断线后若 mqtt.js 没自动重连，2 秒内强制重连，保证一直在线 */
+setInterval(() => {
+  if (!isLoggedIn()) return;
+  const id = savedIdentity();
+  if (!id || !id.uid) return;
+  if (mqttClient && mqttClient.connected) return;
+  if (mqttClient && mqttClient.reconnecting) return;
+  identity = id;
+  if (mqttClient) { try { mqttClient.end(true); } catch (e) {} mqttClient = null; }
+  connectMqtt();
+}, 2000);
+/* 浏览器网络恢复（online 事件）→ 立即重连，不等看门狗 */
+window.addEventListener('online', () => {
+  identity = savedIdentity();
+  if (!identity || !identity.uid) return;
+  if (mqttClient && !mqttClient.connected && !mqttClient.reconnecting) {
+    try { mqttClient.end(true); } catch (e) {} mqttClient = null;
+  }
+  if (!mqttClient) connectMqtt();
+});
+window.addEventListener('offline', () => setStatus('网络已断开', false));
+/* 接收浮窗 + 禁止发送：缓存各台站 USER_RIG 信息，收到语音时弹浮窗 */
+let rigCache = {}, rxBusy = false, rxBusyTimer = null, lastRxLate = 0;
+let rxLevelLast = 0;
+/* 接收语音电平指示条（浮窗底部，往右跳动）。peak01: 0~1 */
+function setRxLevel(peak01) {
+  const pct = Math.min(100, Math.round(peak01 * 160));
+  const now = performance.now();
+  if (now - rxLevelLast < 40) return;
+  rxLevelLast = now;
+  const fill = $('rxLevelFill');
+  fill.style.width = pct + '%';
+  fill.style.background = pct > 75 ? 'var(--red)' : (pct > 45 ? 'var(--accent)' : 'var(--green)');
+}
+function onUserRig(p) {
+  if (p.length < 36) return;
+  const uid = (p[5] | (p[6] << 8) | (p[7] << 16) | (p[8] << 24)) >>> 0;
+  const parts = new TextDecoder().decode(p.slice(9, 32)).split('\0');
+  const model = (parts[1] || '').trim();
+  const freq = new DataView(p.buffer, p.byteOffset + 32, 4).getFloat32(0, true);
+  const region = new TextDecoder().decode(p.slice(36, 52)).split('\0')[0].trim();
+  const height = p.length >= 56 ? (p[52] | (p[53] << 8) | (p[54] << 16) | (p[55] << 24)) >>> 0 : 0;
+  rigCache[uid] = { model: model, freq: freq, region: region, height: height };
+}
+function showRxPopup(uid) {
+  const info = rigCache[uid] || {};
+  $('rxCallsign').textContent = info.callsign || '—';
+  $('rxModel').textContent = info.model || '—';
+  $('rxFreq').textContent = info.freq ? info.freq.toFixed(4) + ' MHz' : '—';
+  $('rxRegion').textContent = info.region || '—';
+  $('rxHeight').textContent = info.height ? info.height + ' M' : '—';
+  $('rxPopup').classList.add('show');
+}
+function setRxBusy(busy) {
+  rxBusy = busy;
+  clearTimeout(rxBusyTimer);
+  const btn = $('pttBtn');
+  if (busy) {
+    if (btn) btn.classList.add('rxbusy');
+    rxBusyTimer = setTimeout(() => { rxBusy = false; $('rxPopup').classList.remove('show'); if (btn) btn.classList.remove('rxbusy'); if (mqttClient && mqttClient.connected) setStatus('已连接 · ' + identity.callsign + ' · UID ' + identity.uid, true); }, 450);
+  } else {
+    $('rxPopup').classList.remove('show');
+    if (btn) btn.classList.remove('rxbusy');
+  }
+}
+function onRaw(raw) {
+  if (raw.length < 72) return;
+  const uid = (raw[6] | (raw[7] << 8) | (raw[8] << 16) | (raw[9] << 24)) >>> 0;
+  const csBytes = raw.slice(10, 22); let cs = ''; for (let i = 0; i < 12 && csBytes[i] !== 0; i++) cs += String.fromCharCode(csBytes[i]);
+  if (uid !== identity.uid) { rigCache[uid] = rigCache[uid] || {}; rigCache[uid].callsign = cs; getAudioCtx(); setRxBusy(true); showRxPopup(uid); if (performance.now() - lastRxLate > 5000) { lastRxLate = performance.now(); sendLate(); } }
+  const frameNum = raw[34] | (raw[35] << 8); let off = 64;
+  const markRx = () => {
+    setStatus('收到 ' + cs + ' (UID ' + uid + ') 的语音', true);
+    clearTimeout(rxStatusTimer);
+    rxStatusTimer = setTimeout(() => { if (mqttClient && mqttClient.connected) setStatus('已连接 · ' + identity.callsign + ' · UID ' + identity.uid, true); }, 3000);
+  };
+  for (let f = 0; f < frameNum && off + 16 <= raw.length; f++) {
+    const tlen = raw[off + 2] | (raw[off + 3] << 8);
+    const compressMode = raw[off + 8];
+    const efLen = raw[off + 9] | (raw[off + 10] << 8);
+    if (uid !== identity.uid) {
+      $('rxCodec').textContent = compressMode === 1 ? 'OPUS' : (compressMode === 2 ? 'RADPCM' : ('模式' + compressMode));
+      if (compressMode === 1 && initLibOpus()) {
+        const opusBytes = raw.slice(off + 16, off + 16 + Math.max(0, efLen - 8));
+        if (opusBytes.length > 0) {
+          try {
+            libOpusDec.decodeRaw(opusBytes, (pcm) => {
+              if (!pcm || !pcm.length) return;
+              const samples = new Int16Array(pcm.length);
+              let rp = 0;
+              for (let i = 0; i < pcm.length; i++) { const v = Math.max(-32768, Math.min(32767, Math.round(pcm[i] * 32767))); samples[i] = v; if (i % 4 === 0) { const a = Math.abs(v); if (a > rp) rp = a; } }
+              rxQueue.push(samples);   // 与 RADPCM 统一走队列顺序播放，避免重叠/断断续续
+              setRxLevel(rp / 32768);
+              pumpRx();
+            });
+          } catch (e) {}
+        }
+        markRx();
+      } else {
+        const samples = decodeRadpcm(raw.slice(off + 16, off + 16 + 328), rxState);
+        rxQueue.push(samples);
+        markRx();
+        pumpRx();
+        let rp = 0; for (let i = 0; i < samples.length; i += 4) { const a = Math.abs(samples[i]); if (a > rp) rp = a; }
+        setRxLevel(rp / 32768);
+      }
+    }
+    const step = (tlen >= 16) ? tlen : (8 + efLen);
+    if (step <= 0) break;
+    off += step;
+  }
+}
+function pumpRx() {
+  if (rxPlaying) return; rxPlaying = true;
+  const playChunk = () => {
+    if (rxQueue.length === 0) { rxPlaying = false; return; }
+    const samples = rxQueue.shift();
+    const buf = getAudioCtx().createBuffer(1, samples.length, SAMPLE_RATE);
+    const ch = buf.getChannelData(0);
+    for (let i = 0; i < samples.length; i++) ch[i] = samples[i] / 32768;
+    playBuffer(buf, playChunk);
+    clearTimeout(rxStuckTimer);
+    rxStuckTimer = setTimeout(() => { if (rxPlaying) { rxPlaying = false; pumpRx(); } }, 1000);
+  };
+  playChunk();
+}
+function getAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = muted ? 0 : 1;
+    masterGain.connect(audioCtx.destination);
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+/* 播放 PCM buffer：若 AudioContext 被挂起（后台/自动播放策略）先恢复再播，避免「间歇性没声」 */
+function playBuffer(buf, onended) {
+  const ctx = getAudioCtx();
+  const play = () => {
+    const src = ctx.createBufferSource(); src.buffer = buf; src.connect(masterGain || ctx.destination);
+    if (onended) src.onended = onended;
+    src.start();
+  };
+  if (ctx.state === 'suspended') { ctx.resume().then(play).catch(() => { if (onended) onended(); }); }
+  else play();
+}
+/* 静音：WebAudio 走 masterGain，历史回放走 player.muted，按钮与状态同步 */
+function applyMute() {
+  $('muteBtn').textContent = muted ? '🔇' : '🔊';
+  $('muteBtn').title = muted ? '已静音（点击取消）' : '静音';
+  if (masterGain) masterGain.gain.value = muted ? 0 : 1;
+  try { if (typeof player !== 'undefined' && player) player.muted = muted; } catch (e) {}
+}
+$('muteBtn').addEventListener('click', () => { muted = !muted; applyMute(); });
+
+/* 发送编码切换（高保真 OPUS / 高压缩 RADPCM），本地持久化 */
+function txCodec() { try { return localStorage.getItem('fmo_tx_codec') === 'radpcm' ? 'radpcm' : 'opus'; } catch (e) { return 'opus'; } }
+function applyCodec(codec) {
+  try { localStorage.setItem('fmo_tx_codec', codec); } catch (e) {}
+  document.querySelectorAll('.codec-opt').forEach(o => o.classList.toggle('on', o.dataset.codec === codec));
+}
+document.querySelectorAll('.codec-opt').forEach(o => o.addEventListener('click', () => applyCodec(o.dataset.codec)));
+applyCodec(txCodec());
+
+$('pttBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} pttDown(); });
+$('pttBtn').addEventListener('pointerup', (e) => { e.preventDefault(); stopTx(); });
+$('pttBtn').addEventListener('pointercancel', stopTx);
+
+function pttDown() {
+  if (isMuted()) { setStatus('已被禁言，仅可收听', false); showAlert('已禁言', '你已被管理员禁言，仅可收听，无法发送语音。'); return; }
+  identity = savedIdentity();
+  if (!identity || !identity.uid) { settingsMask.classList.add('show'); return; }   // 未开通 → 弹设置
+  if (!mqttClient || !mqttClient.connected) { setStatus('连接中，请稍候...', false); return; }
+  if (rxBusy) { setStatus('正在接收语音，禁止发送', false); return; }
+  if (txState) return;
+  mqttClient.publish('FMO/USER_RIG', buildUserRigPacket(identity.uid, Date.now() >>> 0));  // 开始发言时广播 rig 状态
+  sendLate();  // 发言时也发一条 LATE（设备语音活动时多发）
+  txState = { predictor: 0, stepIndex: 0, prevIn: 0, prevOut: 0 };
+  txFrameIndex = 0; opusTxBuf = []; txStreamBegin = Date.now() >>> 0; pcmBuf = new Int16Array(0); pcmBuf8 = []; txFrameBuf = [];
+  if (opusFlushTimer) clearInterval(opusFlushTimer);
+  opusFlushTimer = setInterval(() => { if (txState) flushOpusFrames(); }, OPUS_FLUSH_MS);
+  initLibOpus();
+  $('pttBtn').classList.add('tx');
+  $('pttBtn').innerHTML = '说话中';
+  $('txCallsign').textContent = identity.callsign;
+  $('txMicLevel').textContent = '0%';
+  $('txPopup').classList.add('show');
+  startMic().catch(e => { setStatus('麦克风失败（需 HTTPS）: ' + e.message, false); stopTx(); });
+}
+function isMiniProgram() {
+  try { return window.__wxjs_environment === 'miniprogram' || /miniProgram/i.test(navigator.userAgent || ''); } catch (e) { return false; }
+}
+/* 处理一段 8kHz Int16 PCM（浏览器 getUserMedia 和小程序录音桥共用） */
+function handleMicPcm(pcm) {
+  const downsample = Math.round(48000 / OPUS_ENC_RATE);
+  let peak = 0;
+  for (let i = 0; i < pcm.length; i += downsample) {
+    const s = pcm[i];
+    const a = Math.abs(s); if (a > peak) peak = a;
+    const v = Math.round(Math.max(-1, Math.min(1, s)) * 32767);
+    const next = new Int16Array(pcmBuf.length + 1); next.set(pcmBuf); next[pcmBuf.length] = v; pcmBuf = next;
+  }
+  micLevel = Math.round(peak * 100);
+  if (performance.now() - micLevelShownAt > 150) { micLevelShownAt = performance.now(); $('txMicLevel').textContent = micLevel + '%'; }
+  if (txCodec() === 'opus') {
+    if (pcmBuf.length > 0) { encodeOpusChunk(pcmBuf); pcmBuf = new Int16Array(0); }
+  } else {
+    const radpcmDecim = OPUS_ENC_RATE / SAMPLE_RATE;
+    for (let i = 0; i < pcmBuf.length; i += radpcmDecim) pcmBuf8.push(pcmBuf[i]);
+    pcmBuf = new Int16Array(0);
+    while (pcmBuf8.length >= 640) { const chunk = pcmBuf8.slice(0, 640); pcmBuf8 = pcmBuf8.slice(640); sendFrame(chunk); }
+  }
+}
+async function startMic() {
+  if (micStream) return;
+  const startBrowser = async () => {
+    const ctx = getAudioCtx();
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const src = ctx.createMediaStreamSource(micStream);
+    scriptNode = ctx.createScriptProcessor(4096, 1, 1);
+    scriptNode.onaudioprocess = (ev) => {
+      if (!txState) return;
+      handleMicPcm(ev.inputBuffer.getChannelData(0));   // 48kHz Float32 → 共享处理
+    };
+    src.connect(scriptNode); scriptNode.connect(ctx.destination);
+  };
+  if (isMiniProgram()) {
+    // 小程序 web-view：先试 getUserMedia（iOS14.3+/新安卓微信可用），失败再走原生录音桥/提示
+    try {
+      await startBrowser();
+      return;
+    } catch (e) {
+      if (window.__fmoRecorder && typeof window.__fmoRecorder.start === 'function') {
+        window.__fmoRecorder.start(handleMicPcm);
+        return;
+      }
+      showAlert('暂不支持', '小程序内录音不可用（' + ((e && e.name) || 'NotAllowedError') + '），请用浏览器打开本应用网址发送语音');
+      stopTx();
+      return;
+    }
+  }
+  await startBrowser();
+}
+function sendFrame(pcm640) {
+  const filtered = new Int16Array(640);
+  for (let i = 0; i < 640; i++) {
+    const y = pcm640[i] - txState.prevIn + R * txState.prevOut;
+    txState.prevIn = pcm640[i]; txState.prevOut = y;
+    filtered[i] = Math.max(-32768, Math.min(32767, Math.round(y)));
+  }
+  const frame = encodeRadpcm(filtered, txState);
+  frame[0] = txFrameIndex & 0xff; frame[1] = (txFrameIndex >> 8) & 0xff;
+  txFrameIndex++;
+  txFrameBuf.push(frame);
+  if (txFrameBuf.length >= 3) flushTxFrames();
+}
+function flushTxFrames() {
+  if (txFrameBuf.length === 0) return;
+  const frames = txFrameBuf;
+  txFrameBuf = [];
+  const firstIdx = txFrameIndex - frames.length;
+  const timestamp = Date.now() >>> 0;   // 本包生成时间（发送时刻），非帧位置
+  const pkt = buildRawPacket(identity.uid, identity.callsign, identity.server.targetUID, VENDOR_SOFTWARE, txStreamBegin, timestamp, firstIdx, frames);
+  mqttClient.publish('FMO/RAW', pkt);
+}
+
+/* ================= OPUS（opus-encdec，libopus 1.3.1，SILK 窄带 8kHz/40ms 对齐设备 TOC 0x10） ================= */
+const VENDOR_SOFTWARE = 0x2000;      // vendor 软件区（官方 spec：PC/Web/SDK 用 0x2000-0x2FFF，标识软件客户端）
+const OPUS_RATE = 48000;             // 解码输出采样率（AudioContext 48kHz）
+const OPUS_ENC_RATE = 8000;          // Opus 编码采样率（SILK 窄带 8kHz，对齐设备 TOC 0x10 = SILK NB 40ms）
+const OPUS_FLUSH_MS = 240;           // 每 ~240ms 聚帧发一包（设备一包 6~7 帧 × 40ms）
+let opusTxBuf = [];                  // 待打包的已编码 OPUS 帧
+let opusFlushTimer = null;          // 时间聚帧定时器
+let libOpusEnc = null, libOpusDec = null;
+let opusDiag = false, opusLoadRetry = 0;
+function initLibOpus() {
+  if (libOpusEnc) return true;
+  if (!window.OpusEncoderLib || !window.OpusDecoderLib || !window.OggOpusEncoder || !window.OggOpusDecoder) {
+    if (opusLoadRetry < 20) {   // async 加载中：500ms 后重试，最多约 10 秒
+      opusLoadRetry++;
+      if (!opusDiag) { opusDiag = true; setStatus('opus库加载中…', false); }
+      setTimeout(initLibOpus, 500);
+      return false;
+    }
+    if (!opusDiag) { opusDiag = true; setStatus('opus库缺失: ' + [!!window.OpusEncoderLib, !!window.OpusDecoderLib, !!window.OggOpusEncoder, !!window.OggOpusDecoder].join(','), false); }
+    return false;
+  }
+  const encReady = window.OpusEncoderLib.isReady;
+  const decReady = window.OpusDecoderLib.isReady;
+  if (!encReady || !decReady) {
+    if (!opusDiag) { opusDiag = true; setStatus('opus wasm未就绪: ' + encReady + '/' + decReady, false); }
+    return false;
+  }
+  try {
+    libOpusEnc = new OggOpusEncoder({
+      encoderSampleRate: OPUS_ENC_RATE,   // 8kHz SILK 窄带
+      encoderApplication: 2048,           // VOIP → SILK（设备同款）
+      encoderFrameSize: 40,               // 40ms/帧（设备同款）
+      numberOfChannels: 1,
+      originalSampleRate: OPUS_ENC_RATE,  // 输入 8kHz（与编码采样率一致，不重采样）
+      rawOpus: true
+    }, OpusEncoderLib);
+    libOpusDec = new OggOpusDecoder({
+      decoderSampleRate: SAMPLE_RATE,       // 解码输出 8kHz（与 RADPCM 统一）
+      outputBufferSampleRate: SAMPLE_RATE,
+      numberOfChannels: 1,
+      rawOpus: true
+    }, OpusDecoderLib);
+  } catch (e) { setStatus('opus 初始化失败: ' + e.message, false); return false; }
+  return true;
+}
+function buildOpusPacket(uid, callsign, srvUid, vendor, streamBegin, timestamp, firstFrameIndex, opusFrames) {
+  const n = opusFrames.length;
+  let total = 0; for (const ob of opusFrames) total += 16 + ob.length;
+  const header = new Uint8Array(64);
+  header.set(u16(1), 0); header.set(u32(vendor), 2); header.set(u32(uid), 6);
+  const cs = new TextEncoder().encode(callsign.toUpperCase()); header.set(cs.slice(0, 12), 10);
+  header.set(u32(streamBegin), 22); header.set(u32(timestamp), 26);
+  header.set(u32(64 + total), 30); header.set(u16(n), 34);
+  header[40] = 8; header.set(u32(srvUid), 41);
+  const tfArea = new Uint8Array(total);
+  let off = 0;
+  for (let i = 0; i < n; i++) {
+    const ob = opusFrames[i];
+    const tlen = 16 + ob.length;
+    tfArea.set(u16(i + 1), off); tfArea.set(u16(tlen), off + 2);
+    tfArea[off + 8] = 1; tfArea.set(u16(8 + ob.length), off + 9);
+    tfArea.set(ob, off + 16);
+    off += tlen;
+  }
+  header.set(u32(crc32(tfArea)), 36);
+  return concatBytes(header, tfArea);
+}
+function flushOpusFrames() {
+  if (opusTxBuf.length === 0) return;
+  const frames = opusTxBuf; opusTxBuf = [];
+  const firstIdx = txFrameIndex - frames.length;
+  const timestamp = Date.now() >>> 0;   // 本包生成时间（发送时刻），非帧位置
+  const pkt = buildOpusPacket(identity.uid, identity.callsign, identity.server.targetUID, VENDOR_SOFTWARE, txStreamBegin, timestamp, firstIdx, frames);
+  mqttClient.publish('FMO/RAW', pkt);
+}
+function encodeOpusChunk(pcmInt16) {
+  if (!initLibOpus()) return;
+  try {
+    const f32 = new Float32Array(pcmInt16.length);
+    for (let i = 0; i < pcmInt16.length; i++) f32[i] = pcmInt16[i] / 32768;
+    libOpusEnc.encode([f32]);   // 8kHz 输入，按 40ms/帧编码（TOC 0x10）
+    while (libOpusEnc.encodedData.length > 0) {
+      opusTxBuf.push(libOpusEnc.encodedData.shift());
+      txFrameIndex++;
+    }
+  } catch (e) {}
+}
+
+/* ================= 心跳（USER_RIG + TELE，让设备统计在线） ================= */
+let lateTimer = null, teleTimer = null;
+let lateSendTime = 0, lateLatency = 20;
+function buildTelePacket(uid, callsign, ts) {
+  const p = new Uint8Array(33);
+  p[0] = 2;
+  p.set(u32(ts), 1);
+  p.set(u32(uid), 5);
+  const cs = new TextEncoder().encode(callsign.toUpperCase());
+  p.set(cs.slice(0, 12), 9);
+  p.set(u32(Math.floor(Date.now() / 1000)), 21);  // [21:25] Unix 秒时间戳
+  const rig = getRigInfo();
+  const freq = parseFloat(rig.freq);
+  const fb = new ArrayBuffer(4); new DataView(fb).setFloat32(0, isNaN(freq) ? 0 : freq, true);
+  const fb8 = new Uint8Array(fb);
+  p.set(fb8, 25); p.set(fb8, 29);  // [25:29][29:33] 频率
+  return p;
+}
+function getRigInfo() { try { return JSON.parse(localStorage.getItem('fmo_rig_info') || '{}'); } catch (e) { return {}; } }
+function buildUserRigPacket(uid, ts) {
+  // 对齐真实设备：version(1)+ts(4)+uid(4)+grid(空结尾)+型号(空结尾)+freq(float32@32)+地区@36+高度(u32@52)
+  const rig = getRigInfo();
+  const p = new Uint8Array(56);
+  p[0] = 1;
+  p.set(u32(ts), 1);
+  p.set(u32(uid), 5);
+  let pos = 9;
+  const grid = new TextEncoder().encode(String(rig.grid || '').slice(0, 6));
+  p.set(grid, pos); pos += grid.length; p[pos++] = 0;  // grid 空结尾
+  const model = new TextEncoder().encode(String(rig.model || 'WEB').slice(0, 15));
+  p.set(model, pos); p[pos + model.length] = 0;  // 型号紧跟 grid 后，空结尾
+  const freq = parseFloat(rig.freq);
+  const fb = new ArrayBuffer(4); new DataView(fb).setFloat32(0, isNaN(freq) ? 0 : freq, true);
+  p.set(new Uint8Array(fb), 32);
+  const region = new TextEncoder().encode(String(rig.region || '').slice(0, 15));
+  p.set(region, 36); p[36 + region.length] = 0;
+  p.set(u32(parseInt(rig.height) || 0), 52);
+  return p;
+}
+function buildLatePacket(uid) {
+  // FMO/LATE: latency(4) + ts(4)（小端）。latency=实测往返延迟(ms)；ts=设备 uptime 毫秒
+  const p = new Uint8Array(8);
+  p.set(u32(lateLatency), 0);
+  p.set(u32(Math.floor(performance.now())), 4);
+  return p;
+}
+function buildProfilePacket(uid) {
+  // 复制真实设备 PROFILE 的 128 字节结构，只替换 uid（offset 8:12）
+  // 设备靠接收 FMO/PROFILE 广播统计在线台站数，网页端之前没发，所以没被算进 U 在线数
+  const hex = '00000000a2010100f40d0000a300000050d1cc3f0000000000000000abab0000230506002305060039bc038250d1cc3f6c2bca3f00000000000040cc00008f8dffffff005b8a1e00d048038280d1cc3f702bca3f00000000b1b6a26acde30300702bca3fb8d1cc3f0000000000000000000000005c8a1e003d490382a0d1cc3f';
+  const p = new Uint8Array(128);
+  for (let i = 0; i < 128; i++) p[i] = parseInt(hex.substr(i * 2, 2), 16);
+  p.set(u32(uid), 8);
+  return p;
+}
+function sendLate() {
+  if (!mqttClient || !mqttClient.connected || !identity || !identity.uid) return;
+  lateSendTime = performance.now();
+  mqttClient.publish('FMO/LATE/UID_V1/' + identity.uid, buildLatePacket(identity.uid));
+}
+function sendTele() {
+  if (!mqttClient || !mqttClient.connected || !identity || !identity.uid) return;
+  mqttClient.publish('FMO/TELE', buildTelePacket(identity.uid, identity.callsign, Date.now() >>> 0));
+}
+function sendProfileOnce() {
+  if (!mqttClient || !mqttClient.connected || !identity || !identity.uid) return;
+  mqttClient.publish('FMO/PROFILE', buildProfilePacket(identity.uid));
+  mqttClient.publish('FMO/USER_RIG', buildUserRigPacket(identity.uid, Date.now() >>> 0));
+}
+function onLate() {
+  if (lateSendTime) {
+    const lat = Math.round(performance.now() - lateSendTime);
+    if (lat >= 0 && lat < 60000) lateLatency = lat;
+    lateSendTime = 0;
+    $('latencyDisplay').textContent = lateLatency ? lateLatency + 'ms' : '';
+  }
+}
+/* 在线台站：订阅 FMO/TELE + FMO/PROFILE，像设备一样维护「谁在线 + 频率」列表 */
+let stationMap = {};
+let serverPeak = null;      // 服务器历史峰值（作者 STATION 报文 U<online>/<peak> 的 peak）
+let onlineRefreshTimer = null;
+let localPeak = 0;          // 本地实时峰值（本次会话内最大在线数）
+const ONLINE_WINDOW_MS = 90000;   // TELE 每 60s 广播，1.5 分钟内见过即算在线（更快反映下线）
+function onTele(p) {
+  if (p.length < 33) return;
+  const uid = (p[5] | (p[6] << 8) | (p[7] << 16) | (p[8] << 24)) >>> 0;
+  const csBytes = p.slice(9, 21); let cs = ''; for (let i = 0; i < 12 && csBytes[i] !== 0; i++) cs += String.fromCharCode(csBytes[i]);
+  const freq = new DataView(p.buffer, p.byteOffset + 25, 4).getFloat32(0, true);
+  stationMap[uid] = { callsign: cs, freq: freq, lastSeen: Date.now() };
+  updateOnlineCount();
+}
+function onProfile(p) {
+  if (p.length < 12) return;
+  const uid = (p[8] | (p[9] << 8) | (p[10] << 16) | (p[11] << 24)) >>> 0;
+  const st = stationMap[uid] || { callsign: '', freq: 0, lastSeen: 0 };
+  st.lastSeen = Date.now();
+  stationMap[uid] = st;
+  updateOnlineCount();
+}
+function updateOnlineCount() {
+  const now = Date.now();
+  let n = 0;
+  for (const uid in stationMap) if (now - stationMap[uid].lastSeen < ONLINE_WINDOW_MS) n++;
+  localPeak = Math.max(localPeak, n);   // 本地实时峰值
+  const peak = Math.max(localPeak, serverPeak || 0);
+  let txt = n ? ('在线 ' + n) : '';
+  if (n && peak > 0) txt += ' · 峰值 ' + peak;
+  $('onlineCount').textContent = txt;
+}
+function refreshServerPeak() {
+  fetch('/api/server-stats').then(r => r.json()).then(d => {
+    if (d && d.peak != null) { serverPeak = d.peak; updateOnlineCount(); }
+  }).catch(() => {});
+}
+refreshServerPeak();
+setInterval(refreshServerPeak, 1000);
+
+/* 点击「在线N」弹窗显示在线呼号列表 */
+$('onlineCount').addEventListener('click', showOnlineList);
+$('onlineCount').style.cursor = 'pointer';
+function fmtDur(sec) {
+  sec = Math.floor(sec);
+  if (sec < 60) return sec + '秒';
+  if (sec < 3600) return Math.floor(sec / 60) + '分' + (sec % 60) + '秒';
+  return Math.floor(sec / 3600) + '时' + Math.floor((sec % 3600) / 60) + '分';
+}
+function showOnlineList() {
+  popup.innerHTML = '<div class="popup-header"><div class="name">📡 在线台站</div></div><div class="popup-body"><div class="empty">加载中...</div></div>';
+  mask.classList.add('show');
+  fetch('/api/online-list').then(r => r.json()).then(d => {
+    const items = (d && d.items) || [];
+    let html = '<div class="popup-header"><div class="name">📡 在线台站 (' + items.length + ')</div></div><div class="popup-body" style="max-height:60vh;overflow:auto;font-size:14px;">';
+    if (items.length === 0) {
+      html += '<div class="empty">暂无在线台站</div>';
+    } else {
+      for (const it of items) {
+        const st = stationMap[it.uid];
+        const freq = (st && st.freq) ? st.freq.toFixed(4) + ' MHz' : '';
+        const dur = it.connected_at ? fmtDur(Math.max(0, (Date.now() - new Date(it.connected_at).getTime()) / 1000)) : '';
+        html += '<div class="detail-row" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span>' + (it.callsign || '—') + ' <span style="font-size:11px;color:var(--text-muted);">UID ' + it.uid + '</span></span><span style="color:var(--text-muted);font-size:12px;">' + (dur ? '在线 ' + dur + ' · ' : '') + freq + '</span></div>';
+      }
+    }
+    html += '</div><div class="popup-footer"><button class="close-btn" onclick="closePopup()">关闭</button></div>';
+    popup.innerHTML = html;
+  }).catch(() => {
+    popup.innerHTML = '<div class="popup-header"><div class="name">在线台站</div></div><div class="popup-body"><div class="empty">加载失败</div></div><div class="popup-footer"><button class="close-btn" onclick="closePopup()">关闭</button></div>';
+  });
+}
+function stopTx() {
+  if (!txState) return;
+  if (opusFlushTimer) { clearInterval(opusFlushTimer); opusFlushTimer = null; }
+  flushTxFrames();
+  flushOpusFrames();
+  txState = null;
+  $('pttBtn').classList.remove('tx');
+  $('txPopup').classList.remove('show');
+  if (!$('pttBtn').classList.contains('off')) $('pttBtn').innerHTML = '按住<br>说话';
+  if (scriptNode) { scriptNode.disconnect(); scriptNode = null; }
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  if (window.__fmoRecorder && typeof window.__fmoRecorder.stop === 'function') { try { window.__fmoRecorder.stop(); } catch (e) {} }
+}
+
+/* 页面关闭/刷新时主动断开 MQTT，避免留下同 UID 的僵尸连接 */
+window.addEventListener('beforeunload', () => { if (mqttClient) { try { mqttClient.end(true); } catch (e) {} mqttClient = null; } });
+/* 任意交互时预热 AudioContext（移动端自动播放策略：需用户手势后才能放音） */
+document.addEventListener('pointerdown', () => { try { getAudioCtx(); } catch (e) {} }, { passive: true });
+
+/* 切回前台立即重连 MQTT（后台浏览器节流会断线） */
+function forceReconnect() {
+  identity = savedIdentity();
+  if (!identity || !identity.uid) return;
+  if (mqttClient) { try { mqttClient.end(true); } catch (e) {} mqttClient = null; }
+  connectMqtt();
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') forceReconnect();
+});
+window.addEventListener('pageshow', (e) => { if (e.persisted) forceReconnect(); });   // iOS bfcache 恢复
+
+/* PTT 按钮样式 */
+function applyPttStyle(style, save) {
+  style = style || 'round';
+  const btn = $('pttBtn');
+  btn.classList.remove('style-square', 'style-capsule', 'style-ring');
+  if (style !== 'round') btn.classList.add('style-' + style);
+  try { localStorage.setItem('fmo_ptt_style', style); } catch (e) {}
+  document.querySelectorAll('.ptt-style-opt').forEach(b => {
+    b.style.borderColor = (b.dataset.style === style) ? 'var(--accent)' : 'var(--border)';
+    b.style.color = (b.dataset.style === style) ? 'var(--accent)' : 'var(--text)';
+  });
+  if (save !== false) {
+    const cs = currentCallsign();
+    if (cs) fetch('/api/prefs/ptt-style', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callsign: cs, style }) }).catch(() => {});
+  }
+}
+document.querySelectorAll('.ptt-style-opt').forEach(b => { b.addEventListener('click', () => applyPttStyle(b.dataset.style)); });
+try { applyPttStyle(localStorage.getItem('fmo_ptt_style') || 'round', false); } catch (e) { applyPttStyle('round', false); }
+
+/* 顶栏固定：按真实顶栏高度设置 --header-h，列表/刷新条据此定位 */
+function syncHeaderH() {
+  const h = document.querySelector('.header');
+  if (h && h.offsetHeight) document.documentElement.style.setProperty('--header-h', h.offsetHeight + 'px');
+}
+window.addEventListener('resize', syncHeaderH);
+
+/* 下拉整页刷新（橡皮筋阻尼 + 悬浮胶囊指示器，松手过阈值才整页刷新） */
+let pullStartY = null, pullDist = 0, pullRaf = null;
+const pullEl = $('pullIndicator'), pullText = $('pullText');
+function applyPull(d) {
+  listEl.style.transform = d > 0 ? 'translate3d(0,' + d + 'px,0)' : '';
+  pullEl.style.height = d + 'px';
+  pullEl.classList.toggle('show', d > 10);
+  pullEl.classList.toggle('ready', d >= 60);
+  const txt = d >= 60 ? '松开立即刷新' : '下拉刷新';
+  if (pullText.textContent !== txt) pullText.textContent = txt;
+}
+document.addEventListener('touchstart', (e) => { if (window.scrollY <= 0 && e.target && e.target.closest && e.target.closest('#list')) pullStartY = e.touches[0].clientY; }, { passive: true });
+document.addEventListener('touchmove', (e) => {
+  if (pullStartY == null) return;
+  const dy = e.touches[0].clientY - pullStartY;
+  if (dy <= 0 || window.scrollY > 0) { if (pullDist !== 0) { pullDist = 0; applyPull(0); } return; }
+  // 橡皮筋阻尼：越拉越费劲，渐近 ~150px
+  pullDist = Math.round(150 * (1 - Math.exp(-dy / 120)));
+  if (pullRaf) return;
+  pullRaf = requestAnimationFrame(() => { pullRaf = null; applyPull(pullDist); });
+  if (e.cancelable) e.preventDefault();
+}, { passive: false });
+document.addEventListener('touchend', (e) => {
+  if (pullStartY == null) return;
+  pullStartY = null;
+  const d = pullDist;
+  if (d >= 60) {
+    pullText.textContent = '刷新中…';
+    pullEl.classList.add('spinning');
+    pullEl.classList.remove('ready');
+    pullEl.style.height = '64px';
+    listEl.style.transform = 'translate3d(0,64px,0)';
+    setTimeout(() => location.reload(), 320);
+  } else {
+    listEl.style.transition = 'transform .3s cubic-bezier(.22,.9,.36,1)';
+    pullEl.style.transition = 'height .3s cubic-bezier(.22,.9,.36,1)';
+    pullDist = 0;
+    applyPull(0);
+    setTimeout(() => { listEl.style.transition = ''; pullEl.style.transition = ''; }, 320);
+  }
+}, { passive: true });
+
+/* 播放历史 + 自动连播未读 */
+let playedSet = new Set();
+let playedCallsign = '';
+function playedKey(cs) { return 'fmo_played_' + (cs || ''); }
+function loadPlayedLocal(cs) {
+  playedCallsign = cs || '';
+  playedSet = new Set();
+  if (!playedCallsign) return;
+  try { playedSet = new Set(JSON.parse(localStorage.getItem(playedKey(playedCallsign)) || '[]')); } catch (e) {}
+}
+function persistPlayed() { if (!playedCallsign) return; try { localStorage.setItem(playedKey(playedCallsign), JSON.stringify([...playedSet])); } catch (e) {} }
+function isPlayed(sid) { return playedSet.has(String(sid)); }
+function markCardRead(card) { if (!card) return; card.classList.remove('unread'); const b = card.querySelector('.unread-badge'); if (b) b.remove(); }
+function markPlayed(sid) {
+  const s = String(sid);
+  if (playedSet.has(s)) return;
+  playedSet.add(s);
+  persistPlayed();
+  const cs = currentCallsign();
+  if (cs) fetch('/api/played', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callsign: cs, stream_id: sid }) }).catch(() => {});
+}
+async function syncPlayed() {
+  const cs = currentCallsign();
+  if (!cs) return;
+  if (playedCallsign !== cs) loadPlayedLocal(cs);
+  try {
+    const r = await fetch('/api/played?callsign=' + encodeURIComponent(cs));
+    const data = await r.json();
+    if (data.played && data.played.length) {
+      let changed = false;
+      data.played.forEach(sid => { const s = String(sid); if (!playedSet.has(s)) { playedSet.add(s); changed = true; } });
+      if (changed) {
+        persistPlayed();
+        listEl.querySelectorAll('.voice-card.unread').forEach(card => { const btn = card.querySelector('.play-btn'); if (btn && isPlayed(btn.dataset.stream)) markCardRead(card); });
+      }
+    }
+  } catch (e) {}
+}
+function isListenOnly() { try { return localStorage.getItem('fmo_tier') === 'listen'; } catch (e) { return false; } }
+function isMuted() { try { return localStorage.getItem('fmo_muted') === '1'; } catch (e) { return false; } }
+function playNextUnreadAfter(streamId) {
+  const btns = [...listEl.querySelectorAll('.play-btn')];
+  const idx = btns.findIndex(b => b.dataset.stream === String(streamId));
+  for (let k = idx - 1; k >= 0; k--) {
+    const b = btns[k];
+    if (!isPlayed(b.dataset.stream)) { togglePlay(b.dataset.stream, b, true); return; }
+  }
+}
+function prewarmMic() {
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(s => { s.getTracks().forEach(t => t.stop()); }).catch(() => {});
+  }
+}
+/* 音频解锁（浏览器自动播放策略：每次手势都尝试恢复 AudioContext，iOS 要求在手势内 resume 才生效） */
+let audioUnlocked = false;
+function unlockAudio() {
+  // WebAudio：每次调用都尝试恢复（不提前标记成功，避免页面加载时非手势恢复失败后挡住后续手势）
+  try {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => {
+        const buf = ctx.createBuffer(1, 1, 22050);
+        const src = ctx.createBufferSource(); src.buffer = buf; src.connect(ctx.destination); src.start();
+      }).catch(() => {});
+    }
+  } catch (e) {}
+  // HTML5 audio：只解锁一次（播一个静音 data URI）
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  try {
+    player.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+    const p = player.play();
+    if (p && p.then) p.then(() => { player.pause(); player.currentTime = 0; }).catch(() => {});
+  } catch (e) {}
+}
+document.addEventListener('pointerdown', unlockAudio, { passive: true });
+document.addEventListener('touchend', unlockAudio, { passive: true });
+
+/* 语音授权：登录后弹一次，用户点「授权并启用」= 明确手势，同时请求麦克风 + 解锁播放 */
+const voiceAuthMask = $('voiceAuthMask');
+let voiceAuthed = false;
+function showVoiceAuth() {
+  if (voiceAuthed) return;
+  voiceAuthMask.classList.add('show');
+}
+$('voiceAuthBtn').addEventListener('click', () => {
+  voiceAuthed = true;
+  voiceAuthMask.classList.remove('show');
+  prewarmMic();     // 触发麦克风授权提示
+  unlockAudio();    // 解锁语音播放（手势内 resume）
+});
+voiceAuthMask.addEventListener('click', (e) => { if (e.target === voiceAuthMask) voiceAuthMask.classList.remove('show'); });
+
+/* ================= 启动 ================= */
+/* 重置密码链接：?reset=<token>&callsign=<callsign> */
+(function () {
+  try {
+    const q = new URLSearchParams(location.search);
+    const token = q.get('reset');
+    const cs = (q.get('callsign') || '').toUpperCase();
+    if (token && cs) {
+      showPrompt('重置密码', '输入新密码（大写+小写+数字，≥6 位）', '', (pwd) => {
+        if (!pwd) return;
+        if (!validPassword(pwd)) { showAlert('密码不符合要求', '密码至少 6 位，需包含大写字母、小写字母和数字'); return; }
+        fetch('/api/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callsign: cs, token: token, password: pwd }) }).then(r => r.json()).then(d => {
+          if (d && d.ok) showAlert('成功', '密码已重置，请用新密码登录');
+          else showAlert('重置失败', (d && d.error) || '重置失败');
+        }).catch(e => showAlert('重置失败', e.message));
+      });
+    }
+  } catch (e) {}
+})();
+if (isLoggedIn()) { enterApp(); }
+else { $('loginCallsign').value = currentCallsign(); }
+setInterval(() => { if (listPage <= 1) loadList(false); }, 2000);
+</script>
+</body>
+</html>
